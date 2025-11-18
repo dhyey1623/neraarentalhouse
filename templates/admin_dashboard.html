@@ -1,0 +1,82 @@
+<!-- ==================== FILE: templates/admin_dashboard.html ==================== -->
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
+
+<div class="row">
+    <div class="col-lg-3 col-md-6 col-6 mb-3">
+        <div class="card stats-card" style="border-left-color: #4f46e5;">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small">Total Orders</h6>
+                <h2>{{ total_orders }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 col-6 mb-3">
+        <div class="card stats-card" style="border-left-color: #f59e0b;">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small">Pending</h6>
+                <h2>{{ pending_orders }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 col-6 mb-3">
+        <div class="card stats-card" style="border-left-color: #10b981;">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small">Staff</h6>
+                <h2>{{ total_staff }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 col-6 mb-3">
+        <div class="card stats-card" style="border-left-color: #8b5cf6;">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase small">Products</h6>
+                <h2>{{ total_products }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">Recent Orders</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Customer</th>
+                        <th class="d-none d-md-table-cell">Staff</th>
+                        <th class="d-none d-lg-table-cell">Products</th>
+                        <th>Delivery</th>
+                        <th class="d-none d-md-table-cell">Status</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in recent_orders %}
+                    <tr>
+                        <td>#{{ order.id }}</td>
+                        <td>{{ order.customer_name[:20] }}</td>
+                        <td class="d-none d-md-table-cell">{{ order.staff.name }}</td>
+                        <td class="d-none d-lg-table-cell">{{ order.products|length }} item(s)</td>
+                        <td><small>{{ order.delivery_date.strftime('%m/%d') }}</small></td>
+                        <td class="d-none d-md-table-cell">
+                            <span class="badge bg-{% if order.status == 'pending' %}warning{% elif order.status == 'approved' %}info{% else %}success{% endif %}">
+                                {{ order.status|title }}
+                            </span>
+                        </td>
+                        <td>${{ "%.2f"|format(order.total_amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

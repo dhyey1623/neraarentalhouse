@@ -1,0 +1,210 @@
+<!-- ==================== FILE: templates/view_invoice.html ==================== -->
+{% extends "base.html" %}
+{% block title %}Invoice{% endblock %}
+
+{% block extra_css %}
+<style>
+    .invoice-container {
+        background: white;
+        border: 2px solid #000;
+        padding: 20px;
+    }
+    .invoice-header {
+        border-bottom: 3px solid #000;
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+    }
+    .company-logo {
+        max-width: 150px;
+        height: auto;
+    }
+    .invoice-title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #000;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    .invoice-details-box {
+        border: 1px solid #000;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .products-table {
+        border: 2px solid #000;
+    }
+    .products-table th {
+        background-color: #000;
+        color: white;
+        border: 1px solid #000;
+        padding: 12px;
+    }
+    .products-table td {
+        border: 1px solid #000;
+        padding: 10px;
+    }
+    .total-section {
+        background-color: #f8f9fa;
+        border: 2px solid #000;
+        padding: 15px;
+        margin-top: 20px;
+    }
+    .total-amount {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #000;
+    }
+    @media print {
+        .btn { display: none; }
+        body { background: white; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-md-12">
+        <div class="invoice-container">
+            <!-- Header -->
+            <div class="invoice-header">
+                <div class="row align-items-center">
+                    <div class="col-md-3 text-center mb-3 mb-md-0">
+                        <!-- Logo Upload Location: static/uploads/logo.png -->
+                        {% if logo_exists %}
+                        <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="NERAA RENTAL HOUSE" class="company-logo">
+                        {% else %}
+                        <div style="width: 150px; height: 150px; border: 2px solid #000; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-weight: bold;">LOGO</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 text-center">
+                        <h1 class="invoice-title mb-2">NERAA RENTAL HOUSE</h1>
+                        <p class="mb-1"><strong>Contact:</strong> +91 95588 25555, +91 94294 29228</p>
+                        <p class="mb-0"><small>First Floor, Shivalay Complex, Near Vrajbhusan School,<br>
+                        Ranjitsagar Road, Jamnagar-361005, Gujarat.</small></p>
+                    </div>
+                    <div class="col-md-3 text-end">
+                        <h3 class="mb-2">INVOICE</h3>
+                        <p class="mb-1"><strong>Invoice #:</strong> INV-{{ "%05d"|format(order.id) }}</p>
+                        <p class="mb-1"><strong>Date:</strong> {{ order.created_at.strftime('%d-%m-%Y') }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer and Order Details -->
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="invoice-details-box">
+                        <h6 class="mb-3"><strong>CUSTOMER DETAILS</strong></h6>
+                        <p class="mb-1"><strong>Name:</strong> {{ order.customer_name }}</p>
+                        <p class="mb-1"><strong>Phone:</strong> {{ order.customer_phone }}</p>
+                        {% if order.customer_email %}
+                        <p class="mb-1"><strong>Email:</strong> {{ order.customer_email }}</p>
+                        {% endif %}
+                        {% if order.customer_address %}
+                        <p class="mb-0"><strong>Address:</strong> {{ order.customer_address }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="invoice-details-box">
+                        <h6 class="mb-3"><strong>ORDER DETAILS</strong></h6>
+                        <p class="mb-1"><strong>Order ID:</strong> #{{ order.id }}</p>
+                        <p class="mb-1"><strong>Delivery Date:</strong> {{ order.delivery_date.strftime('%d-%m-%Y') }}</p>
+                        <p class="mb-1"><strong>Return Date:</strong> {{ order.return_date.strftime('%d-%m-%Y') }}</p>
+                        <p class="mb-1"><strong>Rental Days:</strong> {{ order.rental_days }} days</p>
+                        <p class="mb-0"><strong>Status:</strong> <span class="badge bg-info">{{ order.status|title }}</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Table -->
+            <div class="table-responsive mb-3">
+                <table class="table products-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Sr.</th>
+                            <th>Product Details</th>
+                            <th class="text-center">Size</th>
+                            <th class="text-center">Days</th>
+                            <th class="text-end">Rate/Day</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in order.products %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <strong>{{ item.product.name }}</strong><br>
+                                <small class="text-muted">Code: {{ item.product.product_code }}</small>
+                            </td>
+                            <td class="text-center">{{ item.product_size }}</td>
+                            <td class="text-center">{{ order.rental_days }}</td>
+                            <td class="text-end">₹{{ "%.2f"|format(item.product.rental_price_daily) }}</td>
+                            <td class="text-end"><strong>₹{{ "%.2f"|format(item.price) }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Total Section -->
+            <div class="total-section">
+                <div class="row">
+                    <div class="col-md-8 text-end">
+                        <h4 class="mb-0">TOTAL AMOUNT:</h4>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <h3 class="total-amount mb-0">₹{{ "%.2f"|format(order.total_amount) }}</h3>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12 text-end">
+                        <small class="text-muted">Amount in words: {{ amount_in_words(order.total_amount) }} only</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terms & Conditions -->
+            <div class="mt-4">
+                <h6><strong>Terms & Conditions:</strong></h6>
+                <ul class="small mb-0">
+                    <li>Any damage to the rented items will be charged separately</li>
+                    <li>Items must be returned on or before the return date</li>
+                    <li>Late returns will incur additional charges</li>
+                </ul>
+            </div>
+
+            <!-- Footer -->
+            <div class="row mt-5">
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Customer Signature</strong></p>
+                    <div style="border-top: 1px solid #000; width: 200px; margin-top: 50px;"></div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="mb-1"><strong>Authorized Signature</strong></p>
+                    <div style="border-top: 1px solid #000; width: 200px; margin-left: auto; margin-top: 50px;"></div>
+                    <p class="mt-2 mb-0"><strong>NERAA RENTAL HOUSE</strong></p>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <p class="mb-0"><em>Thank you for your business!</em></p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="text-center mt-4 d-print-none">
+           
+            <a href="{{ url_for('download_invoice', order_id=order.id) }}" class="btn btn-success btn-lg">
+                <i class="bi bi-download"></i> Download PDF
+            </a>
+            <a href="{{ url_for('manage_orders') }}" class="btn btn-secondary btn-lg">
+                <i class="bi bi-arrow-left"></i> Back to Orders
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

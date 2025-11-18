@@ -1,0 +1,106 @@
+<!-- ==================== FILE: templates/manage_orders.html ==================== -->
+{% extends "base.html" %}
+{% block title %}Manage Orders{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-cart-check"></i> Manage Orders</h2>
+
+<div class="card">
+    <div class="card-header">
+        <div class="row align-items-center">
+            <div class="col-12 mb-2">
+                <h5 class="mb-0">All Orders</h5>
+            </div>
+            <div class="col-12">
+                <form method="GET" class="row g-2">
+                    <div class="col-md-3 col-6">
+                        <select name="search_type" class="form-select form-select-sm">
+                            <option value="product">Product ID</option>
+                            <option value="staff">Staff Name</option>
+                            <option value="date">Date</option>
+                        </select>
+                    </div>
+                    <div class="col-md-7 col-6">
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Search...">
+                    </div>
+                    <div class="col-md-2 col-12">
+                        <button type="submit" class="btn btn-sm btn-primary w-100">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="btn-group mt-2 w-100" role="group">
+            <a href="{{ url_for('manage_orders', status='all') }}" class="btn btn-sm btn-{% if status_filter == 'all' %}primary{% else %}outline-primary{% endif %}">All</a>
+            <a href="{{ url_for('manage_orders', status='pending') }}" class="btn btn-sm btn-{% if status_filter == 'pending' %}warning{% else %}outline-warning{% endif %}">Pending</a>
+            <a href="{{ url_for('manage_orders', status='approved') }}" class="btn btn-sm btn-{% if status_filter == 'approved' %}info{% else %}outline-info{% endif %}">Approved</a>
+            <a href="{{ url_for('manage_orders', status='completed') }}" class="btn btn-sm btn-{% if status_filter == 'completed' %}success{% else %}outline-success{% endif %}">Completed</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Customer</th>
+                        <th class="d-none d-lg-table-cell">Staff</th>
+                        <th class="d-none d-md-table-cell">Products</th>
+                        <th>Delivery</th>
+                        <th class="d-none d-lg-table-cell">Return</th>
+                        <th>Status</th>
+                        <th class="d-none d-md-table-cell">Amount</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td><strong>#{{ order.id }}</strong></td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 100px;">{{ order.customer_name }}</div>
+                            <small class="text-muted">{{ order.customer_phone }}</small>
+                        </td>
+                        <td class="d-none d-lg-table-cell">{{ order.staff.name }}</td>
+                        <td class="d-none d-md-table-cell">
+                            {% for item in order.products %}
+                            <span class="badge bg-secondary small">{{ item.product.product_code }}</span>
+                            {% endfor %}
+                        </td>
+                        <td><small>{{ order.delivery_date.strftime('%m/%d') }}</small></td>
+                        <td class="d-none d-lg-table-cell"><small>{{ order.return_date.strftime('%m/%d') }}</small></td>
+                        <td>
+                            <form method="POST" action="{{ url_for('update_order_status', order_id=order.id) }}" class="d-inline">
+                                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
+                                    <option value="approved" {% if order.status == 'approved' %}selected{% endif %}>Approved</option>
+                                    <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                    <option value="returned" {% if order.status == 'returned' %}selected{% endif %}>Returned</option>
+                                    <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Completed</option>
+                                    <option value="canceled" {% if order.status == 'canceled' %}selected{% endif %}>Canceled</option>
+                                </select>
+                            </form>
+                        </td>
+                        <td class="d-none d-md-table-cell"><strong>${{ "%.2f"|format(order.total_amount) }}</strong></td>
+                        <td>
+                            <div class="btn-group-vertical btn-group-sm" role="group">
+                                <a href="{{ url_for('edit_order', order_id=order.id) }}" class="btn btn-sm btn-warning" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{{ url_for('view_invoice', order_id=order.id) }}" class="btn btn-sm btn-info" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('download_invoice', order_id=order.id) }}" class="btn btn-sm btn-success" title="Download">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

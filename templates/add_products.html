@@ -1,0 +1,136 @@
+<!-- ==================== FILE: templates/add_products.html ==================== -->
+{% extends "base.html" %}
+{% block title %}Add Products{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-plus-circle"></i> Add Products to Order #{{ order.id }}</h2>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h6>Order Details:</h6>
+        <p><strong>Customer:</strong> {{ order.customer_name }}</p>
+        <p><strong>Delivery:</strong> {{ order.delivery_date.strftime('%Y-%m-%d') }}</p>
+        <p><strong>Return:</strong> {{ order.return_date.strftime('%Y-%m-%d') }}</p>
+        <p><strong>Current Total:</strong> ${{ "%.2f"|format(order.total_amount) }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" id="addProductsForm">
+            <h5 class="mb-3">Add New Products</h5>
+            
+            <div id="productsContainer"></div>
+
+            <button type="button" class="btn btn-success mb-3" id="addProductBtn">
+                <i class="bi bi-plus-circle"></i> Add Another Product
+            </button>
+
+            <div class="text-end">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Add Products
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const productsContainer = document.getElementById('productsContainer');
+    const addProductBtn = document.getElementById('addProductBtn');
+    
+    // Products data from server
+    const productsData = JSON.parse(`{{ products|tojson|safe }}`);
+    
+    addProductBtn.addEventListener('click', function() {
+        addProductRow();
+    });
+    
+    function addProductRow() {
+        const row = document.createElement('div');
+        row.className = 'product-card mb-3';
+        row.innerHTML = `
+            <div class="row align-items-center">
+                <div class="col-md-6 mb-2">
+                    <label class="form-label small">Product *</label>
+                    <select class="form-select product-select" name="product_id[]" required>
+                        <option value="">Select Product</option>
+                        ${productsData.map(p => `
+                            <option value="${p.id}" 
+                                data-code="${p.product_code}"
+                                data-name="${p.name}"
+                                data-price="${p.rental_price_daily}" 
+                                data-deposit="${p.deposit_amount}"
+                                data-image="${p.image_path || ''}">
+                                ${p.product_code} - ${p.name} (${p.rental_price_daily}/day)
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-2">
+                    <label class="form-label small">Size *</label>
+                    <select class="form-select" name="product_size[]" required>
+                        <option value="S">Small</option>
+                        <option value="M">Medium</option>
+                        <option value="L">Large</option>
+                        <option value="XL">X-Large</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label small d-none d-md-block">&nbsp;</label>
+                    <button type="button" class="btn btn-danger w-100 remove-product">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row product-details" style="display: none;">
+                <div class="col-12">
+                    <div class="d-flex align-items-center mt-2 p-2 bg-light rounded">
+                        <img class="product-image me-3" src="" alt="" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">
+                        <div>
+                            <strong class="product-name"></strong><br>
+                            <span class="badge bg-primary product-code"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        productsContainer.appendChild(row);
+        
+        const select = row.querySelector('.product-select');
+        select.addEventListener('change', function() {
+            const option = this.options[this.selectedIndex];
+            if (this.value) {
+                const details = row.querySelector('.product-details');
+                const img = row.querySelector('.product-image');
+                const imagePath = option.dataset.image;
+                
+                if (imagePath) {
+                    img.src = '/static/' + imagePath;
+                } else {
+                    img.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect fill="%23e5e7eb" width="60" height="60"/></svg>';
+                }
+                
+                row.querySelector('.product-name').textContent = option.dataset.name;
+                row.querySelector('.product-code').textContent = option.dataset.code;
+                details.style.display = 'block';
+            } else {
+                row.querySelector('.product-details').style.display = 'none';
+            }
+        });
+        
+        row.querySelector('.remove-product').addEventListener('click', function() {
+            row.remove();
+        });
+    }
+    
+    // Add first product row
+    addProductRow();
+});
+</script>
+{% endblock %}

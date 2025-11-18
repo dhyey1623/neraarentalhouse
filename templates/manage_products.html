@@ -1,0 +1,98 @@
+<!-- ==================== FILE: templates/manage_products.html ==================== -->
+{% extends "base.html" %}
+{% block title %}Manage Products{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-bag"></i> Manage Products</h2>
+
+<div class="mb-3">
+    <a href="{{ url_for('bulk_add_products') }}" class="btn btn-success">
+        <i class="bi bi-bag-plus"></i> Add Multiple Products
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 col-md-5 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Add Single Product</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Product Code *</label>
+                        <input type="text" class="form-control" name="product_code" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Product Name *</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Product Image</label>
+                        <input type="file" class="form-control" name="image" accept="image/*">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Daily Price *</label>
+                        <input type="number" class="form-control" name="rental_price_daily" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Deposit</label>
+                        <input type="number" class="form-control" name="deposit_amount" step="0.01" value="0">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-circle"></i> Add Product
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8 col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Product Catalog</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>Code</th>
+                                <th class="d-none d-md-table-cell">Name</th>
+                                <th>Price</th>
+                                <th class="d-none d-lg-table-cell">Deposit</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in products %}
+                            <tr>
+                                <td>
+                                    {% if product.image_path %}
+                                    <img src="{{ url_for('static', filename=product.image_path) }}" alt="{{ product.name }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
+                                    {% else %}
+                                    <div style="width: 40px; height: 40px; background: #e5e7eb; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+                                        <i class="bi bi-image"></i>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td><strong>{{ product.product_code }}</strong></td>
+                                <td class="d-none d-md-table-cell">{{ product.name }}</td>
+                                <td>${{ "%.2f"|format(product.rental_price_daily) }}</td>
+                                <td class="d-none d-lg-table-cell">${{ "%.2f"|format(product.deposit_amount) }}</td>
+                                <td>
+                                    <a href="{{ url_for('edit_product', product_id=product.id) }}" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

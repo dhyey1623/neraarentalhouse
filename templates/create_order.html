@@ -1,0 +1,325 @@
+<!-- ==================== FILE: templates/create_order.html ==================== -->
+{% extends "base.html" %}
+{% block title %}Create Order{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-plus-circle"></i> Create New Order</h2>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" id="orderForm">
+            <h5 class="mb-3">Customer Details</h5>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Customer Name *</label>
+                    <input type="text" class="form-control" name="customer_name" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Phone Number *</label>
+                    <input type="tel" class="form-control" name="customer_phone" required>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" name="customer_email">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Address</label>
+                    <input type="text" class="form-control" name="customer_address">
+                </div>
+            </div>
+
+            <h5 class="mb-3 mt-4">Rental Period</h5>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Delivery Date *</label>
+                    <input type="date" class="form-control" name="delivery_date" id="deliveryDate" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Return Date *</label>
+                    <input type="date" class="form-control" name="return_date" id="returnDate" required>
+                </div>
+            </div>
+
+            <h5 class="mb-3 mt-4">Products</h5>
+            
+            <!-- Product Search -->
+            <div class="mb-3">
+                <label class="form-label">Search Products (by Code or Name)</label>
+                <input type="text" class="form-control" id="productSearch" placeholder="Type to search products...">
+                <div id="searchResults" class="list-group mt-2" style="display: none; max-height: 200px; overflow-y: auto;"></div>
+            </div>
+
+            <div id="productsContainer"></div>
+
+            <button type="button" class="btn btn-success mb-3" id="addProductBtn">
+                <i class="bi bi-plus-circle"></i> Add Another Product
+            </button>
+
+            <div class="alert alert-info" id="priceCalculation" style="display: none;">
+                <h6>Price Summary:</h6>
+                <p class="mb-1">Rental Days: <strong id="rentalDays">0</strong></p>
+                <div id="productPrices"></div>
+                <hr>
+                <h5 class="mb-0">Total Amount: <strong id="totalAmount">₹0.00</strong></h5>
+            </div>
+
+            <div class="text-end">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Order
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deliveryDate = document.getElementById('deliveryDate');
+    const returnDate = document.getElementById('returnDate');
+    const productsContainer = document.getElementById('productsContainer');
+    const addProductBtn = document.getElementById('addProductBtn');
+    const priceCalc = document.getElementById('priceCalculation');
+    const productSearch = document.getElementById('productSearch');
+    const searchResults = document.getElementById('searchResults');
+    
+    const today = new Date().toISOString().split('T')[0];
+    deliveryDate.setAttribute('min', today);
+    
+    const productsData = JSON.parse(`{{ products|tojson|safe }}`);
+    let currentProducts = productsData;
+    
+    // Search functionality with live results
+    productSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        
+        if (searchTerm === '') {
+            searchResults.style.display = 'none';
+            currentProducts = productsData;
+            return;
+        }
+        
+        currentProducts = productsData.filter(p => 
+            p.product_code.toLowerCase().includes(searchTerm) || 
+            p.name.toLowerCase().includes(searchTerm)
+        );
+        
+        if (currentProducts.length > 0) {
+            searchResults.innerHTML = '';
+            currentProducts.forEach(p => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action';
+                item.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        ${p.image_path ? `<img src="/static/${p.image_path}" style="width: 40px; height: 40px; object-fit: cover; margin-right: 10px; border-radius: 4px;">` : ''}
+                        <div>
+                            <strong>${p.product_code}</strong> - ${p.name}
+                            <br><small class="text-muted">₹${p.rental_price_daily}/day</small>
+                        </div>
+                    </div>
+                `;
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    addProductRow(p);
+                    productSearch.value = '';
+                    searchResults.style.display = 'none';
+                });
+                searchResults.appendChild(item);
+            });
+            searchResults.style.display = 'block';
+        } else {
+            searchResults.innerHTML = '<div class="list-group-item">No products found</div>';
+            searchResults.style.display = 'block';
+        }
+    });
+    
+    // Hide search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (e.target !== productSearch && !searchResults.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+    
+    deliveryDate.addEventListener('change', function() {
+        const delivery = new Date(deliveryDate.value);
+        const nextDay = new Date(delivery);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const minReturn = nextDay.toISOString().split('T')[0];
+        returnDate.setAttribute('min', minReturn);
+        
+        if (returnDate.value) {
+            const returnD = new Date(returnDate.value);
+            if (returnD <= delivery) {
+                returnDate.value = minReturn;
+            }
+        }
+        calculatePrice();
+    });
+    
+    returnDate.addEventListener('change', function() {
+        calculatePrice();
+    });
+    
+    addProductBtn.addEventListener('click', function() {
+        addProductRow();
+    });
+    
+    function addProductRow(preselectedProduct = null) {
+        const row = document.createElement('div');
+        row.className = 'product-card mb-3';
+        
+        let optionsHTML = '<option value="">Choose a product...</option>';
+        productsData.forEach(p => {
+            const selected = preselectedProduct && p.id === preselectedProduct.id ? 'selected' : '';
+            optionsHTML += `<option value="${p.id}" 
+                data-code="${p.product_code}"
+                data-name="${p.name}"
+                data-price="${p.rental_price_daily}" 
+                data-deposit="${p.deposit_amount}"
+                data-image="${p.image_path || ''}" ${selected}>
+                ${p.product_code} - ${p.name} (₹${p.rental_price_daily}/day)
+            </option>`;
+        });
+        
+        row.innerHTML = `
+            <div class="row align-items-center">
+                <div class="col-md-6 col-12 mb-2">
+                    <label class="form-label small">Select Product *</label>
+                    <select class="form-select product-select" name="product_id[]" required>
+                        ${optionsHTML}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 mb-2">
+                    <label class="form-label small">Size *</label>
+                    <select class="form-select" name="product_size[]" required>
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3 mb-2">
+                    <label class="form-label small">Price</label>
+                    <input type="text" class="form-control product-price" readonly>
+                </div>
+                <div class="col-12 col-md-1 mb-2">
+                    <label class="form-label small d-none d-md-block">&nbsp;</label>
+                    <button type="button" class="btn btn-danger btn-sm w-100 remove-product">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row product-details" style="display: none;">
+                <div class="col-12">
+                    <div class="d-flex align-items-center mt-2 p-2 bg-light rounded">
+                        <img class="product-image me-3" src="" alt="" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #e5e7eb;">
+                        <div>
+                            <strong class="product-name"></strong><br>
+                            <span class="badge bg-primary product-code"></span>
+                            <span class="text-muted small d-block mt-1">₹<span class="product-daily-price"></span>/day + ₹<span class="product-deposit"></span> deposit</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        productsContainer.appendChild(row);
+        
+        const select = row.querySelector('.product-select');
+        select.addEventListener('change', function() {
+            const option = this.options[this.selectedIndex];
+            if (this.value) {
+                const details = row.querySelector('.product-details');
+                const img = row.querySelector('.product-image');
+                const imagePath = option.dataset.image;
+                
+                if (imagePath && imagePath !== '') {
+                    img.src = '/static/' + imagePath;
+                    img.style.display = 'block';
+                } else {
+                    img.style.display = 'none';
+                }
+                
+                row.querySelector('.product-name').textContent = option.dataset.name;
+                row.querySelector('.product-code').textContent = option.dataset.code;
+                row.querySelector('.product-daily-price').textContent = parseFloat(option.dataset.price).toFixed(2);
+                row.querySelector('.product-deposit').textContent = parseFloat(option.dataset.deposit).toFixed(2);
+                details.style.display = 'block';
+            } else {
+                row.querySelector('.product-details').style.display = 'none';
+            }
+            calculatePrice();
+        });
+        
+        row.querySelector('.remove-product').addEventListener('click', function() {
+            row.remove();
+            calculatePrice();
+        });
+        
+        if (preselectedProduct) {
+            select.dispatchEvent(new Event('change'));
+        }
+    }
+    
+    addProductRow();
+    
+    function calculatePrice() {
+        if (!deliveryDate.value || !returnDate.value) return;
+        
+        const delivery = new Date(deliveryDate.value);
+        const returnD = new Date(returnDate.value);
+        
+        const days = Math.ceil((returnD - delivery) / (1000 * 60 * 60 * 24));
+        
+        if (days <= 0) {
+            priceCalc.style.display = 'none';
+            return;
+        }
+        
+        document.getElementById('rentalDays').textContent = days;
+        
+        let total = 0;
+        let totalDeposit = 0;
+        let productPricesHTML = '';
+        
+        document.querySelectorAll('.product-select').forEach(select => {
+            if (select.value) {
+                const option = select.options[select.selectedIndex];
+                const dailyPrice = parseFloat(option.dataset.price);
+                const deposit = parseFloat(option.dataset.deposit);
+                
+                // Calculate: (days × daily price)
+                // Deposit is separate and shown separately
+                const rentalCost = days * dailyPrice;
+                const productTotal = rentalCost; // Only rental cost in product total
+                
+                total += productTotal;
+                totalDeposit += deposit; // Add to total deposit
+                
+                const row = select.closest('.product-card');
+                row.querySelector('.product-price').value = '₹' + productTotal.toFixed(2);
+                
+                productPricesHTML += `<p class="mb-1 small"><strong>${option.dataset.code}:</strong> ${days} days × ₹${dailyPrice.toFixed(2)} = ₹${productTotal.toFixed(2)}</p>`;
+            }
+        });
+        
+        // Show deposit separately
+        if (totalDeposit > 0) {
+            productPricesHTML += `<p class="mb-1 small text-success"><strong>Security Deposit (One-time):</strong> ₹${totalDeposit.toFixed(2)}</p>`;
+        }
+        
+        document.getElementById('productPrices').innerHTML = productPricesHTML;
+        document.getElementById('totalAmount').textContent = '₹' + total.toFixed(2);
+        
+        if (total > 0) {
+            priceCalc.style.display = 'block';
+        }
+    }
+});
+</script>
+{% endblock %}

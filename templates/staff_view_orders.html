@@ -1,0 +1,79 @@
+<!-- ==================== FILE: templates/staff_view_orders.html ==================== -->
+{% extends "base.html" %}
+{% block title %}View All Orders{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-list-ul"></i> All Orders (Read Only)</h2>
+
+<div class="card">
+    <div class="card-header">
+        <div class="row align-items-center">
+            <div class="col-md-6 col-12 mb-2 mb-md-0">
+                <h5 class="mb-0">All Orders</h5>
+            </div>
+            <div class="col-md-6 col-12">
+                <div class="btn-group w-100" role="group">
+                    <a href="{{ url_for('staff_view_orders', status='all') }}" 
+                       class="btn btn-sm btn-{% if status_filter == 'all' %}primary{% else %}outline-primary{% endif %}">All</a>
+                    <a href="{{ url_for('staff_view_orders', status='pending') }}" 
+                       class="btn btn-sm btn-{% if status_filter == 'pending' %}warning{% else %}outline-warning{% endif %}">Pending</a>
+                    <a href="{{ url_for('staff_view_orders', status='approved') }}" 
+                       class="btn btn-sm btn-{% if status_filter == 'approved' %}info{% else %}outline-info{% endif %}">Approved</a>
+                    <a href="{{ url_for('staff_view_orders', status='completed') }}" 
+                       class="btn btn-sm btn-{% if status_filter == 'completed' %}success{% else %}outline-success{% endif %}">Completed</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Customer</th>
+                        <th class="d-none d-md-table-cell">Staff</th>
+                        <th class="d-none d-lg-table-cell">Products</th>
+                        <th>Delivery</th>
+                        <th class="d-none d-md-table-cell">Status</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>#{{ order.id }}</td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 150px;">{{ order.customer_name }}</div>
+                            <small class="text-muted d-md-none">{{ order.customer_phone }}</small>
+                        </td>
+                        <td class="d-none d-md-table-cell">{{ order.staff.name }}</td>
+                        <td class="d-none d-lg-table-cell">
+                            {% for item in order.products %}
+                            <span class="badge bg-secondary">{{ item.product.product_code }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <small>{{ order.delivery_date.strftime('%m/%d') }}</small>
+                            <span class="d-md-none badge bg-{% if order.status == 'pending' %}warning{% elif order.status == 'approved' %}info{% else %}success{% endif %}">
+                                {{ order.status[:3] }}
+                            </span>
+                        </td>
+                        <td class="d-none d-md-table-cell">
+                            <span class="badge bg-{% if order.status == 'pending' %}warning{% elif order.status == 'approved' %}info{% elif order.status == 'completed' %}success{% else %}secondary{% endif %}">
+                                {{ order.status|title }}
+                            </span>
+                        </td>
+                        <td><strong>${{ "%.2f"|format(order.total_amount) }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <i class="bi bi-info-circle"></i> You are viewing all orders in read-only mode. Contact admin to modify orders.
+</div>
+{% endblock %}

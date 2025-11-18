@@ -1,0 +1,208 @@
+<!-- ==================== FILE: templates/edit_order.html ==================== -->
+{% extends "base.html" %}
+{% block title %}Edit Order{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Order #{{ order.id }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="editOrderForm">
+                    <h6 class="mb-3 text-primary">Customer Details</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Customer Name *</label>
+                            <input type="text" class="form-control" name="customer_name" value="{{ order.customer_name }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Phone *</label>
+                            <input type="tel" class="form-control" name="customer_phone" value="{{ order.customer_phone }}" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="customer_email" value="{{ order.customer_email or '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Address</label>
+                            <input type="text" class="form-control" name="customer_address" value="{{ order.customer_address or '' }}">
+                        </div>
+                    </div>
+
+                    <h6 class="mb-3 mt-4 text-primary">Order Details</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Delivery Date *</label>
+                            <input type="date" class="form-control" name="delivery_date" id="deliveryDate" value="{{ order.delivery_date.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Return Date *</label>
+                            <input type="date" class="form-control" name="return_date" id="returnDate" value="{{ order.return_date.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="3">{{ order.notes or '' }}</textarea>
+                    </div>
+
+                    <h6 class="mb-3 mt-4 text-primary">Products in Order</h6>
+                    <div id="productsContainer">
+                        {% for item in order.products %}
+                        <div class="product-row card mb-3 p-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label small">Product *</label>
+                                    <select class="form-select" name="product_id[]" required>
+                                        {% for product in products %}
+                                        <option value="{{ product.id }}" {% if product.id == item.product_id %}selected{% endif %}>
+                                            {{ product.product_code }} - {{ product.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <label class="form-label small">Size *</label>
+                                    <select class="form-select" name="product_size[]" required>
+                                        <option value="S" {% if item.product_size == 'S' %}selected{% endif %}>S</option>
+                                        <option value="M" {% if item.product_size == 'M' %}selected{% endif %}>M</option>
+                                        <option value="L" {% if item.product_size == 'L' %}selected{% endif %}>L</option>
+                                        <option value="XL" {% if item.product_size == 'XL' %}selected{% endif %}>XL</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2 mb-2">
+                                    <label class="form-label small">Price</label>
+                                    <input type="text" class="form-control" value="₹{{ '%.2f'|format(item.price) }}" readonly>
+                                </div>
+                                <div class="col-md-1 mb-2">
+                                    <label class="form-label small d-none d-md-block">&nbsp;</label>
+                                    <button type="button" class="btn btn-danger btn-sm w-100 remove-product">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <button type="button" class="btn btn-success mb-3" id="addProductBtn">
+                        <i class="bi bi-plus-circle"></i> Add Another Product
+                    </button>
+
+                    <div class="alert alert-warning mt-3">
+                        <i class="bi bi-info-circle"></i> <strong>Note:</strong> Changing products or dates will recalculate the total amount.
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <a href="{{ url_for('manage_orders') }}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Update Order
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const productsContainer = document.getElementById('productsContainer');
+    const addProductBtn = document.getElementById('addProductBtn');
+    const deliveryDate = document.getElementById('deliveryDate');
+    const returnDate = document.getElementById('returnDate');
+    
+    const productsData = JSON.parse(`{{ products|tojson|safe }}`);
+    
+    addProductBtn.addEventListener('click', function() {
+        addProductRow();
+    });
+    
+    function addProductRow() {
+        const row = document.createElement('div');
+        row.className = 'product-row card mb-3 p-3';
+        row.innerHTML = `
+            <div class="row align-items-center">
+                <div class="col-md-6 mb-2">
+                    <label class="form-label small">Product *</label>
+                    <select class="form-select" name="product_id[]" required>
+                        <option value="">Select Product</option>
+                        ${productsData.map(p => `
+                            <option value="${p.id}">
+                                ${p.product_code} - ${p.name}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label class="form-label small">Size *</label>
+                    <select class="form-select" name="product_size[]" required>
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label small">Price</label>
+                    <input type="text" class="form-control" value="₹0.00" readonly>
+                </div>
+                <div class="col-md-1 mb-2">
+                    <label class="form-label small d-none d-md-block">&nbsp;</label>
+                    <button type="button" class="btn btn-danger btn-sm w-100 remove-product">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        productsContainer.appendChild(row);
+        
+        row.querySelector('.remove-product').addEventListener('click', function() {
+            if (document.querySelectorAll('.product-row').length > 1) {
+                row.remove();
+            } else {
+                alert('Order must have at least one product');
+            }
+        });
+    }
+    
+    // Add remove functionality to existing products
+    document.querySelectorAll('.remove-product').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (document.querySelectorAll('.product-row').length > 1) {
+                btn.closest('.product-row').remove();
+            } else {
+                alert('Order must have at least one product');
+            }
+        });
+    });
+    
+    // Date validation
+    const today = new Date().toISOString().split('T')[0];
+    deliveryDate.setAttribute('min', today);
+    
+    deliveryDate.addEventListener('change', function() {
+        const delivery = new Date(deliveryDate.value);
+        const nextDay = new Date(delivery);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const minReturn = nextDay.toISOString().split('T')[0];
+        returnDate.setAttribute('min', minReturn);
+        
+        if (returnDate.value) {
+            const returnD = new Date(returnDate.value);
+            if (returnD <= delivery) {
+                returnDate.value = minReturn;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
