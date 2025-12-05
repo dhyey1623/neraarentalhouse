@@ -1,105 +1,163 @@
-<!-- ==================== FILE: templates/manage_orders.html ==================== -->
-{% extends "base.html" %}
-{% block title %}Manage Orders{% endblock %}
+{% extends 'base.html' %}
+
+{% block title %}Manage Orders - NERAA Rental{% endblock %}
 
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-cart-check"></i> Manage Orders</h2>
-
-<div class="card">
-    <div class="card-header">
-        <div class="row align-items-center">
-            <div class="col-12 mb-2">
-                <h5 class="mb-0">All Orders</h5>
-            </div>
-            <div class="col-12">
-                <form method="GET" class="row g-2">
-                    <div class="col-md-3 col-6">
-                        <select name="search_type" class="form-select form-select-sm">
-                            <option value="product">Product ID</option>
-                            <option value="staff">Staff Name</option>
-                            <option value="date">Date</option>
+<div class="container-fluid px-0">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h4 class="mb-0"><i class="bi bi-cart me-2"></i>Orders</h4>
+        <a href="{{ url_for('create_order') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>New
+        </a>
+    </div>
+    
+    <!-- Search Filters -->
+    <div class="card mb-3">
+        <div class="card-body py-3">
+            <form method="GET">
+                <div class="row g-2">
+                    <div class="col-6 col-md-3">
+                        <input type="text" name="search" class="form-control" 
+                               value="{{ request.args.get('search', '') }}" placeholder="Product Code">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <input type="date" name="date" class="form-control" 
+                               value="{{ request.args.get('date', '') }}">
+                    </div>
+                    <div class="col-8 col-md-4">
+                        <select name="staff" class="form-select">
+                            <option value="">All Staff</option>
+                            {% for staff in staff_list %}
+                            <option value="{{ staff.name }}" {% if request.args.get('staff') == staff.name %}selected{% endif %}>
+                                {{ staff.name }}
+                            </option>
+                            {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-7 col-6">
-                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Search...">
-                    </div>
-                    <div class="col-md-2 col-12">
-                        <button type="submit" class="btn btn-sm btn-primary w-100">
-                            <i class="bi bi-search"></i> Search
+                    <div class="col-4 col-md-2 d-flex gap-1">
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            <i class="bi bi-search"></i>
                         </button>
+                        <a href="{{ url_for('manage_orders') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
                     </div>
-                </form>
-            </div>
-        </div>
-        <div class="btn-group mt-2 w-100" role="group">
-            <a href="{{ url_for('manage_orders', status='all') }}" class="btn btn-sm btn-{% if status_filter == 'all' %}primary{% else %}outline-primary{% endif %}">All</a>
-            <a href="{{ url_for('manage_orders', status='pending') }}" class="btn btn-sm btn-{% if status_filter == 'pending' %}warning{% else %}outline-warning{% endif %}">Pending</a>
-            <a href="{{ url_for('manage_orders', status='approved') }}" class="btn btn-sm btn-{% if status_filter == 'approved' %}info{% else %}outline-info{% endif %}">Approved</a>
-            <a href="{{ url_for('manage_orders', status='completed') }}" class="btn btn-sm btn-{% if status_filter == 'completed' %}success{% else %}outline-success{% endif %}">Completed</a>
+                </div>
+            </form>
         </div>
     </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Customer</th>
-                        <th class="d-none d-lg-table-cell">Staff</th>
-                        <th class="d-none d-md-table-cell">Products</th>
-                        <th>Delivery</th>
-                        <th class="d-none d-lg-table-cell">Return</th>
-                        <th>Status</th>
-                        <th class="d-none d-md-table-cell">Amount</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for order in orders %}
-                    <tr>
-                        <td><strong>#{{ order.id }}</strong></td>
-                        <td>
-                            <div class="text-truncate" style="max-width: 100px;">{{ order.customer_name }}</div>
-                            <small class="text-muted">{{ order.customer_phone }}</small>
-                        </td>
-                        <td class="d-none d-lg-table-cell">{{ order.staff.name }}</td>
-                        <td class="d-none d-md-table-cell">
-                            {% for item in order.products %}
-                            <span class="badge bg-secondary small">{{ item.product.product_code }}</span>
-                            {% endfor %}
-                        </td>
-                        <td><small>{{ order.delivery_date.strftime('%m/%d') }}</small></td>
-                        <td class="d-none d-lg-table-cell"><small>{{ order.return_date.strftime('%m/%d') }}</small></td>
-                        <td>
-                            <form method="POST" action="{{ url_for('update_order_status', order_id=order.id) }}" class="d-inline">
-                                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                                    <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
-                                    <option value="approved" {% if order.status == 'approved' %}selected{% endif %}>Approved</option>
-                                    <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
-                                    <option value="returned" {% if order.status == 'returned' %}selected{% endif %}>Returned</option>
-                                    <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Completed</option>
-                                    <option value="canceled" {% if order.status == 'canceled' %}selected{% endif %}>Canceled</option>
-                                </select>
-                            </form>
-                        </td>
-                        <td class="d-none d-md-table-cell"><strong>${{ "%.2f"|format(order.total_amount) }}</strong></td>
-                        <td>
-                            <div class="btn-group-vertical btn-group-sm" role="group">
-                                <a href="{{ url_for('edit_order', order_id=order.id) }}" class="btn btn-sm btn-warning" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <a href="{{ url_for('view_invoice', order_id=order.id) }}" class="btn btn-sm btn-info" title="View">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="{{ url_for('download_invoice', order_id=order.id) }}" class="btn btn-sm btn-success" title="Download">
-                                    <i class="bi bi-download"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Customer</th>
+                            <th class="d-none d-md-table-cell">Staff</th>
+                            <th class="d-none d-sm-table-cell">Delivery</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>#{{ order.id }}</td>
+                            <td>
+                                {{ order.customer.name[:12] }}{% if order.customer.name|length > 12 %}...{% endif %}
+                                <small class="d-block text-muted">{{ order.customer.phone }}</small>
+                            </td>
+                            <td class="d-none d-md-table-cell">{{ order.staff.name }}</td>
+                            <td class="d-none d-sm-table-cell">{{ order.delivery_date.strftime('%d-%m') }}</td>
+                            <td>₹{{ "%.0f"|format(order.total_amount) }}</td>
+                            <td>
+                                {% if order.status == 'pending' %}
+                                <span class="badge bg-warning">Pending</span>
+                                {% elif order.status == 'approved' %}
+                                <span class="badge bg-success">Approved</span>
+                                {% elif order.status == 'completed' %}
+                                <span class="badge bg-info">Done</span>
+                                {% elif order.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancel</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ order.status }}</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- ACTIONS: Now contains TWO DROPDOWNS -->
+                            <td class="text-end d-flex justify-content-end gap-2">
+
+                                <!-- Drawer 1: Invoice / Edit / Packing Slip (Status removed) -->
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('view_invoice', order_id=order.id) }}">
+                                                <i class="bi bi-eye me-2"></i>Invoice
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('edit_order', order_id=order.id) }}">
+                                                <i class="bi bi-pencil me-2"></i>Edit
+                                            </a>
+                                        </li>
+                                        {% if order.status == 'approved' %}
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('packing_slip', order_id=order.id) }}">
+                                                <i class="bi bi-box-seam me-2"></i>Packing Slip
+                                            </a>
+                                        </li>
+                                        {% endif %}
+                                    </ul>
+                                </div>
+
+                                <!-- Drawer 2: NEW Status-only drawer -->
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li class="px-3 py-1"><small class="text-muted">Update Status</small></li>
+
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('update_order_status', order_id=order.id, status='pending') }}">
+                                                <i class="bi bi-clock text-warning me-2"></i>Pending
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('update_order_status', order_id=order.id, status='approved') }}">
+                                                <i class="bi bi-check-circle text-success me-2"></i>Approved
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('update_order_status', order_id=order.id, status='completed') }}">
+                                                <i class="bi bi-check-all text-info me-2"></i>Completed
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('update_order_status', order_id=order.id, status='cancelled') }}">
+                                                <i class="bi bi-x-circle text-danger me-2"></i>Cancelled
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">No orders found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
