@@ -1,208 +1,387 @@
-<!-- ==================== FILE: templates/edit_order.html ==================== -->
-{% extends "base.html" %}
-{% block title %}Edit Order{% endblock %}
+{% extends 'base.html' %}
+
+{% block title %}Edit Order - NERAA Rental{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media (max-width: 768px) {
+        .product-row .form-select {
+            font-size: 14px;
+        }
+        
+        .price-display {
+            font-size: 14px;
+        }
+        
+        .accessory-row .row,
+        .extra-row .row {
+            gap: 10px;
+        }
+        
+        .accessory-row .form-control,
+        .extra-row .form-control {
+            font-size: 14px;
+        }
+        
+        .btn-outline-danger {
+            padding: 6px 10px;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        h4 {
+            font-size: 1.1rem;
+        }
+        
+        .card-header h5 {
+            font-size: 1rem;
+        }
+        
+        .form-label {
+            font-size: 13px;
+        }
+        
+        .form-control,
+        .form-select {
+            font-size: 14px;
+            padding: 10px 12px;
+        }
+        
+        .btn-lg {
+            font-size: 15px;
+            padding: 12px 20px;
+        }
+        
+        .btn-sm {
+            font-size: 12px;
+            padding: 6px 10px;
+        }
+        
+        .alert {
+            font-size: 14px;
+            padding: 10px 12px;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10 col-md-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Order #{{ order.id }}</h5>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0"><i class="bi bi-pencil me-2"></i>Edit Order #{{ order.id }}</h4>
+        <a href="{{ url_for('manage_orders') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+    
+    <form method="POST" id="editOrderForm">
+        <div class="row">
+            <!-- Customer Details -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-person me-2"></i>Customer Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Customer Name <span class="text-danger">*</span></label>
+                            <input type="text" name="customer_name" class="form-control" 
+                                   value="{{ order.customer.name }}" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Primary Phone <span class="text-danger">*</span></label>
+                                <input type="tel" name="customer_phone" class="form-control" 
+                                       value="{{ order.customer.phone }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Secondary Phone</label>
+                                <input type="tel" name="secondary_phone" class="form-control" 
+                                       value="{{ order.customer.secondary_phone or '' }}">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="customer_email" class="form-control" 
+                                   value="{{ order.customer.email or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <textarea name="customer_address" class="form-control" rows="2">{{ order.customer.address or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order Details -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-calendar me-2"></i>Order Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Delivery Date <span class="text-danger">*</span></label>
+                                <input type="date" name="delivery_date" class="form-control" 
+                                       value="{{ order.delivery_date.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Return Date <span class="text-danger">*</span></label>
+                                <input type="date" name="return_date" class="form-control" 
+                                       value="{{ order.return_date.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea name="notes" class="form-control" rows="3">{{ order.notes or '' }}</textarea>
+                        </div>
+                        <div class="alert alert-info mb-0">
+                            <strong>Current Total:</strong> ₹{{ "%.0f"|format(order.total_amount) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Products -->
+        <div class="card mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Products</h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addProduct()">
+                    <i class="bi bi-plus-circle me-1"></i>Add Product
+                </button>
             </div>
             <div class="card-body">
-                <form method="POST" id="editOrderForm">
-                    <h6 class="mb-3 text-primary">Customer Details</h6>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Customer Name *</label>
-                            <input type="text" class="form-control" name="customer_name" value="{{ order.customer_name }}" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Phone *</label>
-                            <input type="tel" class="form-control" name="customer_phone" value="{{ order.customer_phone }}" required>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="customer_email" value="{{ order.customer_email or '' }}">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Address</label>
-                            <input type="text" class="form-control" name="customer_address" value="{{ order.customer_address or '' }}">
-                        </div>
-                    </div>
-
-                    <h6 class="mb-3 mt-4 text-primary">Order Details</h6>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Delivery Date *</label>
-                            <input type="date" class="form-control" name="delivery_date" id="deliveryDate" value="{{ order.delivery_date.strftime('%Y-%m-%d') }}" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Return Date *</label>
-                            <input type="date" class="form-control" name="return_date" id="returnDate" value="{{ order.return_date.strftime('%Y-%m-%d') }}" required>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Notes</label>
-                        <textarea class="form-control" name="notes" rows="3">{{ order.notes or '' }}</textarea>
-                    </div>
-
-                    <h6 class="mb-3 mt-4 text-primary">Products in Order</h6>
-                    <div id="productsContainer">
-                        {% for item in order.products %}
-                        <div class="product-row card mb-3 p-3">
+                <div id="productsContainer">
+                    {% for item in order.items %}
+                    <div class="product-row card mb-2">
+                        <div class="card-body py-2 px-3">
                             <div class="row align-items-center">
-                                <div class="col-md-6 mb-2">
-                                    <label class="form-label small">Product *</label>
-                                    <select class="form-select" name="product_id[]" required>
-                                        {% for product in products %}
-                                        <option value="{{ product.id }}" {% if product.id == item.product_id %}selected{% endif %}>
-                                            {{ product.product_code }} - {{ product.name }}
+                                <div class="col-md-8 col-6">
+                                    <select name="product_id[]" class="form-select" required>
+                                        <option value="">Select Product</option>
+                                        {% for p in products %}
+                                        <option value="{{ p.id }}" 
+                                                data-price="{{ p.rental_price }}"
+                                                {% if p.id == item.product_id %}selected{% endif %}>
+                                            {{ p.product_code }} - {{ p.name }} (₹{{ "%.0f"|format(p.rental_price) }})
                                         </option>
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-3 mb-2">
-                                    <label class="form-label small">Size *</label>
-                                    <select class="form-select" name="product_size[]" required>
-                                        <option value="S" {% if item.product_size == 'S' %}selected{% endif %}>S</option>
-                                        <option value="M" {% if item.product_size == 'M' %}selected{% endif %}>M</option>
-                                        <option value="L" {% if item.product_size == 'L' %}selected{% endif %}>L</option>
-                                        <option value="XL" {% if item.product_size == 'XL' %}selected{% endif %}>XL</option>
-                                    </select>
+                                <div class="col-md-3 col-4">
+                                    <span class="price-display">₹{{ "%.0f"|format(item.price) }}</span>
                                 </div>
-                                <div class="col-md-2 mb-2">
-                                    <label class="form-label small">Price</label>
-                                    <input type="text" class="form-control" value="₹{{ '%.2f'|format(item.price) }}" readonly>
-                                </div>
-                                <div class="col-md-1 mb-2">
-                                    <label class="form-label small d-none d-md-block">&nbsp;</label>
-                                    <button type="button" class="btn btn-danger btn-sm w-100 remove-product">
+                                <div class="col-md-1 col-2 text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeProduct(this)">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
-                        {% endfor %}
                     </div>
-                    
-                    <button type="button" class="btn btn-success mb-3" id="addProductBtn">
-                        <i class="bi bi-plus-circle"></i> Add Another Product
-                    </button>
-
-                    <div class="alert alert-warning mt-3">
-                        <i class="bi bi-info-circle"></i> <strong>Note:</strong> Changing products or dates will recalculate the total amount.
-                    </div>
-
-                    <div class="text-end mt-4">
-                        <a href="{{ url_for('manage_orders') }}" class="btn btn-secondary btn-lg">
-                            <i class="bi bi-x-circle"></i> Cancel
-                        </a>
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="bi bi-check-circle"></i> Update Order
-                        </button>
-                    </div>
-                </form>
+                    {% endfor %}
+                </div>
             </div>
         </div>
-    </div>
+        
+        <!-- Accessories -->
+        <div class="card mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-bag me-2"></i>Accessories (Optional)</h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addAccessory()">
+                    <i class="bi bi-plus-circle me-1"></i>Add Accessory
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="accessoriesContainer">
+                    {% for acc in order.accessories %}
+                    <div class="accessory-row card mb-2">
+                        <div class="card-body py-2 px-3">
+                            <div class="row align-items-center g-2">
+                                <div class="col-md-5">
+                                    <input type="text" name="accessory_name[]" class="form-control" 
+                                           placeholder="Accessory Name" value="{{ acc.accessory_name }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" name="accessory_remarks[]" class="form-control" 
+                                           placeholder="Remarks" value="{{ acc.remarks or '' }}">
+                                </div>
+                                <div class="col-md-1 text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAccessory(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Extra Charges -->
+        <div class="card mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-currency-rupee me-2"></i>Extra Charges (Optional)</h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addExtraCharge()">
+                    <i class="bi bi-plus-circle me-1"></i>Add Charge
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="extraChargesContainer">
+                    {% for extra in order.extra_charges %}
+                    <div class="extra-row card mb-2">
+                        <div class="card-body py-2 px-3">
+                            <div class="row align-items-center g-2">
+                                <div class="col-md-4">
+                                    <input type="text" name="extra_description[]" class="form-control" 
+                                           placeholder="Description" value="{{ extra.description }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" name="extra_amount[]" class="form-control" 
+                                           placeholder="Amount" value="{{ extra.amount }}" min="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" name="extra_remarks[]" class="form-control" 
+                                           placeholder="Remarks" value="{{ extra.remarks or '' }}">
+                                </div>
+                                <div class="col-md-1 text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeExtra(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex gap-2 mb-4">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-check-circle me-1"></i>Update Order
+            </button>
+            <a href="{{ url_for('manage_orders') }}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const productsContainer = document.getElementById('productsContainer');
-    const addProductBtn = document.getElementById('addProductBtn');
-    const deliveryDate = document.getElementById('deliveryDate');
-    const returnDate = document.getElementById('returnDate');
+const productsData = JSON.parse('{{ products|tojson|safe }}');
+
+function addProduct() {
+    const container = document.getElementById('productsContainer');
+    const row = document.createElement('div');
+    row.className = 'product-row card mb-2';
     
-    const productsData = JSON.parse(`{{ products|tojson|safe }}`);
-    
-    addProductBtn.addEventListener('click', function() {
-        addProductRow();
+    let options = '<option value="">Select Product</option>';
+    productsData.forEach(p => {
+        options += `<option value="${p.id}" data-price="${p.rental_price}">
+            ${p.product_code} - ${p.name} (₹${p.rental_price})
+        </option>`;
     });
     
-    function addProductRow() {
-        const row = document.createElement('div');
-        row.className = 'product-row card mb-3 p-3';
-        row.innerHTML = `
+    row.innerHTML = `
+        <div class="card-body py-2 px-3">
             <div class="row align-items-center">
-                <div class="col-md-6 mb-2">
-                    <label class="form-label small">Product *</label>
-                    <select class="form-select" name="product_id[]" required>
-                        <option value="">Select Product</option>
-                        ${productsData.map(p => `
-                            <option value="${p.id}">
-                                ${p.product_code} - ${p.name}
-                            </option>
-                        `).join('')}
+                <div class="col-md-8 col-6">
+                    <select name="product_id[]" class="form-select" required onchange="updatePrice(this)">
+                        ${options}
                     </select>
                 </div>
-                <div class="col-md-3 mb-2">
-                    <label class="form-label small">Size *</label>
-                    <select class="form-select" name="product_size[]" required>
-                        <option value="S">S</option>
-                        <option value="M">M</option>
-                        <option value="L">L</option>
-                        <option value="XL">XL</option>
-                    </select>
+                <div class="col-md-3 col-4">
+                    <span class="price-display">₹0</span>
                 </div>
-                <div class="col-md-2 mb-2">
-                    <label class="form-label small">Price</label>
-                    <input type="text" class="form-control" value="₹0.00" readonly>
-                </div>
-                <div class="col-md-1 mb-2">
-                    <label class="form-label small d-none d-md-block">&nbsp;</label>
-                    <button type="button" class="btn btn-danger btn-sm w-100 remove-product">
+                <div class="col-md-1 col-2 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeProduct(this)">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
             </div>
-        `;
-        
-        productsContainer.appendChild(row);
-        
-        row.querySelector('.remove-product').addEventListener('click', function() {
-            if (document.querySelectorAll('.product-row').length > 1) {
-                row.remove();
-            } else {
-                alert('Order must have at least one product');
-            }
-        });
+        </div>
+    `;
+    
+    container.appendChild(row);
+}
+
+function removeProduct(btn) {
+    const rows = document.querySelectorAll('.product-row');
+    if (rows.length > 1) {
+        btn.closest('.product-row').remove();
+    } else {
+        alert('At least one product is required');
     }
-    
-    // Add remove functionality to existing products
-    document.querySelectorAll('.remove-product').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (document.querySelectorAll('.product-row').length > 1) {
-                btn.closest('.product-row').remove();
-            } else {
-                alert('Order must have at least one product');
-            }
-        });
-    });
-    
-    // Date validation
-    const today = new Date().toISOString().split('T')[0];
-    deliveryDate.setAttribute('min', today);
-    
-    deliveryDate.addEventListener('change', function() {
-        const delivery = new Date(deliveryDate.value);
-        const nextDay = new Date(delivery);
-        nextDay.setDate(nextDay.getDate() + 1);
-        const minReturn = nextDay.toISOString().split('T')[0];
-        returnDate.setAttribute('min', minReturn);
-        
-        if (returnDate.value) {
-            const returnD = new Date(returnDate.value);
-            if (returnD <= delivery) {
-                returnDate.value = minReturn;
-            }
-        }
-    });
-});
+}
+
+function updatePrice(select) {
+    const priceDisplay = select.closest('.row').querySelector('.price-display');
+    const selectedOption = select.options[select.selectedIndex];
+    const price = selectedOption.dataset.price || 0;
+    priceDisplay.textContent = `₹${parseFloat(price).toFixed(0)}`;
+}
+
+function addAccessory() {
+    const container = document.getElementById('accessoriesContainer');
+    const row = document.createElement('div');
+    row.className = 'accessory-row card mb-2';
+    row.innerHTML = `
+        <div class="card-body py-2 px-3">
+            <div class="row align-items-center g-2">
+                <div class="col-md-5">
+                    <input type="text" name="accessory_name[]" class="form-control" placeholder="Accessory Name">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="accessory_remarks[]" class="form-control" placeholder="Remarks">
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAccessory(this)">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    container.appendChild(row);
+}
+
+function removeAccessory(btn) {
+    btn.closest('.accessory-row').remove();
+}
+
+function addExtraCharge() {
+    const container = document.getElementById('extraChargesContainer');
+    const row = document.createElement('div');
+    row.className = 'extra-row card mb-2';
+    row.innerHTML = `
+        <div class="card-body py-2 px-3">
+            <div class="row align-items-center g-2">
+                <div class="col-md-4">
+                    <input type="text" name="extra_description[]" class="form-control" placeholder="Description">
+                </div>
+                <div class="col-md-3">
+                    <input type="number" name="extra_amount[]" class="form-control" placeholder="Amount" min="0">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" name="extra_remarks[]" class="form-control" placeholder="Remarks">
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeExtra(this)">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    container.appendChild(row);
+}
+
+function removeExtra(btn) {
+    btn.closest('.extra-row').remove();
+}
 </script>
 {% endblock %}
