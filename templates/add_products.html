@@ -1,136 +1,327 @@
-<!-- ==================== FILE: templates/add_products.html ==================== -->
-{% extends "base.html" %}
-{% block title %}Add Products{% endblock %}
+{% extends 'base.html' %}
+
+{% block title %}Add Products to Order - NERAA Rental{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-card {
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .product-card.selected {
+        border-color: #6366f1;
+        background: #f0f0ff;
+    }
+    
+    .product-image {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        flex-shrink: 0;
+    }
+    
+    .product-placeholder {
+        width: 60px;
+        height: 60px;
+        background: #e2e8f0;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    
+    .search-results.show {
+        display: block;
+    }
+    
+    .search-result-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .search-result-item:hover {
+        background: #f8fafc;
+    }
+    
+    .search-result-item img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 6px;
+        flex-shrink: 0;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .product-card {
+            padding: 12px;
+        }
+        
+        .product-image,
+        .product-placeholder {
+            width: 50px;
+            height: 50px;
+        }
+        
+        .product-card h6 {
+            font-size: 14px;
+        }
+        
+        .product-card .badge {
+            font-size: 11px;
+        }
+        
+        .search-results {
+            max-height: 250px;
+        }
+        
+        .search-result-item {
+            padding: 8px 12px;
+        }
+        
+        .search-result-item img {
+            width: 35px;
+            height: 35px;
+        }
+        
+        .search-result-item strong {
+            font-size: 13px;
+        }
+        
+        .search-result-item small {
+            font-size: 11px;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .product-image,
+        .product-placeholder {
+            width: 45px;
+            height: 45px;
+        }
+        
+        .product-card h6 {
+            font-size: 13px;
+        }
+        
+        .btn-outline-danger {
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-plus-circle"></i> Add Products to Order #{{ order.id }}</h2>
-
-<div class="card mb-3">
-    <div class="card-body">
-        <h6>Order Details:</h6>
-        <p><strong>Customer:</strong> {{ order.customer_name }}</p>
-        <p><strong>Delivery:</strong> {{ order.delivery_date.strftime('%Y-%m-%d') }}</p>
-        <p><strong>Return:</strong> {{ order.return_date.strftime('%Y-%m-%d') }}</p>
-        <p><strong>Current Total:</strong> ${{ "%.2f"|format(order.total_amount) }}</p>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Add Products to Order #{{ order.id }}</h4>
+        <a href="{{ url_for('staff_view_orders') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
     </div>
-</div>
-
-<div class="card">
-    <div class="card-body">
-        <form method="POST" id="addProductsForm">
-            <h5 class="mb-3">Add New Products</h5>
-            
-            <div id="productsContainer"></div>
-
-            <button type="button" class="btn btn-success mb-3" id="addProductBtn">
-                <i class="bi bi-plus-circle"></i> Add Another Product
-            </button>
-
-            <div class="text-end">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-circle"></i> Add Products
-                </button>
+    
+    <!-- Order Info -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Customer:</strong> {{ order.customer.name }}</p>
+                    <p class="mb-1"><strong>Phone:</strong> {{ order.customer.phone }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Delivery:</strong> {{ order.delivery_date.strftime('%d-%m-%Y') }}</p>
+                    <p class="mb-1"><strong>Return:</strong> {{ order.return_date.strftime('%d-%m-%Y') }}</p>
+                </div>
             </div>
-        </form>
+        </div>
     </div>
+    
+    <!-- Current Products -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Current Products</h5>
+        </div>
+        <div class="card-body">
+            {% for item in order.items %}
+            <div class="product-card">
+                <div class="d-flex align-items-center gap-3">
+                    {% if item.product.image_path %}
+                    <img src="{{ url_for('static', filename=item.product.image_path) }}" class="product-image" alt="{{ item.product.name }}">
+                    {% else %}
+                    <div class="product-placeholder"><i class="bi bi-image text-muted"></i></div>
+                    {% endif %}
+                    <div class="flex-grow-1">
+                        <span class="badge bg-secondary mb-1">{{ item.product.product_code }}</span>
+                        <h6 class="mb-0">{{ item.product.name }}</h6>
+                        <span class="text-primary fw-bold">₹{{ "%.0f"|format(item.price) }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="alert alert-info mb-0 mt-3">
+                <strong>Current Total:</strong> ₹{{ "%.0f"|format(order.total_amount) }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add New Products -->
+    <form method="POST">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Add New Products</h5>
+            </div>
+            <div class="card-body">
+                <!-- Product Search -->
+                <div class="position-relative mb-3">
+                    <input type="text" id="productSearch" class="form-control form-control-lg" 
+                           placeholder="🔍 Search by Product Code or Name...">
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+                
+                <!-- Selected Products -->
+                <div id="selectedProducts">
+                    <p class="text-muted">Search and select products to add to this order.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex gap-2 mb-4">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-check-circle me-1"></i>Add Products
+            </button>
+            <a href="{{ url_for('staff_view_orders') }}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const productsContainer = document.getElementById('productsContainer');
-    const addProductBtn = document.getElementById('addProductBtn');
+const productsData = JSON.parse('{{ products|tojson|safe }}');
+const existingProductIds = JSON.parse('{{ order.items|map(attribute="product_id")|list|tojson|safe }}');
+let selectedProducts = [];
+
+// Product Search
+const searchInput = document.getElementById('productSearch');
+const searchResults = document.getElementById('searchResults');
+
+searchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
     
-    // Products data from server
-    const productsData = JSON.parse(`{{ products|tojson|safe }}`);
-    
-    addProductBtn.addEventListener('click', function() {
-        addProductRow();
-    });
-    
-    function addProductRow() {
-        const row = document.createElement('div');
-        row.className = 'product-card mb-3';
-        row.innerHTML = `
-            <div class="row align-items-center">
-                <div class="col-md-6 mb-2">
-                    <label class="form-label small">Product *</label>
-                    <select class="form-select product-select" name="product_id[]" required>
-                        <option value="">Select Product</option>
-                        ${productsData.map(p => `
-                            <option value="${p.id}" 
-                                data-code="${p.product_code}"
-                                data-name="${p.name}"
-                                data-price="${p.rental_price_daily}" 
-                                data-deposit="${p.deposit_amount}"
-                                data-image="${p.image_path || ''}">
-                                ${p.product_code} - ${p.name} (${p.rental_price_daily}/day)
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div class="col-md-4 mb-2">
-                    <label class="form-label small">Size *</label>
-                    <select class="form-select" name="product_size[]" required>
-                        <option value="S">Small</option>
-                        <option value="M">Medium</option>
-                        <option value="L">Large</option>
-                        <option value="XL">X-Large</option>
-                    </select>
-                </div>
-                <div class="col-md-2 mb-2">
-                    <label class="form-label small d-none d-md-block">&nbsp;</label>
-                    <button type="button" class="btn btn-danger w-100 remove-product">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="row product-details" style="display: none;">
-                <div class="col-12">
-                    <div class="d-flex align-items-center mt-2 p-2 bg-light rounded">
-                        <img class="product-image me-3" src="" alt="" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">
-                        <div>
-                            <strong class="product-name"></strong><br>
-                            <span class="badge bg-primary product-code"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        productsContainer.appendChild(row);
-        
-        const select = row.querySelector('.product-select');
-        select.addEventListener('change', function() {
-            const option = this.options[this.selectedIndex];
-            if (this.value) {
-                const details = row.querySelector('.product-details');
-                const img = row.querySelector('.product-image');
-                const imagePath = option.dataset.image;
-                
-                if (imagePath) {
-                    img.src = '/static/' + imagePath;
-                } else {
-                    img.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect fill="%23e5e7eb" width="60" height="60"/></svg>';
-                }
-                
-                row.querySelector('.product-name').textContent = option.dataset.name;
-                row.querySelector('.product-code').textContent = option.dataset.code;
-                details.style.display = 'block';
-            } else {
-                row.querySelector('.product-details').style.display = 'none';
-            }
-        });
-        
-        row.querySelector('.remove-product').addEventListener('click', function() {
-            row.remove();
-        });
+    if (query.length < 1) {
+        searchResults.classList.remove('show');
+        return;
     }
     
-    // Add first product row
-    addProductRow();
+    const matches = productsData.filter(p => 
+        (p.product_code.toLowerCase().includes(query) || p.name.toLowerCase().includes(query)) &&
+        !existingProductIds.includes(p.id) &&
+        !selectedProducts.find(sp => sp.id === p.id)
+    );
+    
+    if (matches.length === 0) {
+        searchResults.innerHTML = '<div class="p-3 text-muted">No available products found</div>';
+    } else {
+        searchResults.innerHTML = matches.map(p => `
+            <div class="search-result-item" onclick="selectProduct(${p.id})">
+                ${p.image_path ? 
+                    `<img src="/static/${p.image_path}" alt="${p.name}">` : 
+                    `<div class="product-placeholder" style="width:40px;height:40px;"><i class="bi bi-image"></i></div>`
+                }
+                <div class="flex-grow-1">
+                    <strong>${p.product_code}</strong> - ${p.name}
+                    <br><small class="text-primary">₹${p.rental_price}</small>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    searchResults.classList.add('show');
 });
+
+searchInput.addEventListener('blur', function() {
+    setTimeout(() => searchResults.classList.remove('show'), 200);
+});
+
+function selectProduct(productId) {
+    const product = productsData.find(p => p.id === productId);
+    if (!product) return;
+    
+    if (existingProductIds.includes(productId)) {
+        alert('Product already in order!');
+        return;
+    }
+    
+    if (selectedProducts.find(p => p.id === productId)) {
+        alert('Product already selected!');
+        return;
+    }
+    
+    selectedProducts.push(product);
+    searchInput.value = '';
+    searchResults.classList.remove('show');
+    renderSelectedProducts();
+}
+
+function removeSelectedProduct(productId) {
+    selectedProducts = selectedProducts.filter(p => p.id !== productId);
+    renderSelectedProducts();
+}
+
+function renderSelectedProducts() {
+    const container = document.getElementById('selectedProducts');
+    
+    if (selectedProducts.length === 0) {
+        container.innerHTML = '<p class="text-muted">Search and select products to add to this order.</p>';
+        return;
+    }
+    
+    container.innerHTML = selectedProducts.map(p => `
+        <div class="product-card selected">
+            <div class="d-flex align-items-center gap-3">
+                ${p.image_path ? 
+                    `<img src="/static/${p.image_path}" class="product-image" alt="${p.name}">` : 
+                    `<div class="product-placeholder"><i class="bi bi-image text-muted"></i></div>`
+                }
+                <div class="flex-grow-1">
+                    <span class="badge bg-secondary mb-1">${p.product_code}</span>
+                    <h6 class="mb-0">${p.name}</h6>
+                    <span class="text-primary fw-bold">₹${p.rental_price}</span>
+                </div>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeSelectedProduct(${p.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+            <input type="hidden" name="product_id[]" value="${p.id}">
+        </div>
+    `).join('');
+}
 </script>
 {% endblock %}
