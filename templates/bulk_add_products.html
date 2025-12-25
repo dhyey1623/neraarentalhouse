@@ -1,90 +1,171 @@
-<!-- ==================== FILE: templates/bulk_add_products.html ==================== -->
-{% extends "base.html" %}
-{% block title %}Bulk Add Products{% endblock %}
+{% extends 'base.html' %}
+
+{% block title %}Bulk Add Products - NERAA Rental{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-row {
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        overflow: hidden;
+    }
+    .product-row .card-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .product-row.has-error {
+        border-color: #ef4444;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-bag-plus"></i> Add Multiple Products</h2>
-
-<div class="card">
-    <div class="card-body">
-        <form method="POST" enctype="multipart/form-data" id="bulkForm">
-            <div class="mb-3">
-                <label class="form-label">Number of Products to Add</label>
-                <select class="form-select" id="productCount" style="max-width: 200px;">
-                    <option value="1">1 Product</option>
-                    <option value="2">2 Products</option>
-                    <option value="3" selected>3 Products</option>
-                    <option value="5">5 Products</option>
-                    <option value="10">10 Products</option>
-                </select>
-            </div>
-
-            <div id="productsContainer"></div>
-
-            <div class="text-end mt-4">
-                <a href="{{ url_for('manage_products') }}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-circle"></i> Add All Products
-                </button>
-            </div>
-        </form>
+<div class="container-fluid px-0">
+    <div class="d-flex justify-content-between align-items-center mb-3 mb-md-4">
+        <h4 class="mb-0"><i class="bi bi-plus-square me-2"></i>Bulk Add Products</h4>
+        <a href="{{ url_for('manage_products') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
     </div>
+    
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        Add multiple products at once. Fill in the details and click <strong>Save All</strong>.
+    </div>
+    
+    <form method="POST" enctype="multipart/form-data" id="bulkAddForm">
+        <div id="productsContainer"></div>
+        
+        <div class="d-flex gap-2 mt-3 flex-wrap">
+            <button type="button" class="btn btn-outline-primary" onclick="addProductRow()">
+                <i class="bi bi-plus-circle me-1"></i>Add More Product
+            </button>
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+                <i class="bi bi-check-circle me-1"></i>Save All Products
+            </button>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const productCount = document.getElementById('productCount');
+let productCount = 0;
+
+function addProductRow() {
+    productCount++;
     const container = document.getElementById('productsContainer');
     
-    productCount.addEventListener('change', generateForms);
+    const row = document.createElement('div');
+    row.className = 'product-row';
+    row.id = 'productRow' + productCount;
+    row.innerHTML = `
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span><strong><i class="bi bi-box-seam me-2"></i>Product #${productCount}</strong></span>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeProductRow(${productCount})">
+                <i class="bi bi-trash"></i> Remove
+            </button>
+        </div>
+        <div class="card-body py-3">
+            <div class="row g-2 g-md-3">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small">Product Code <span class="text-danger">*</span></label>
+                    <input type="text" name="product_code[]" class="form-control product-code" placeholder="e.g., NP001">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small">Product Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name[]" class="form-control product-name" placeholder="e.g., Black Sherwani">
+                </div>
+                <div class="col-4 col-md-2">
+                    <label class="form-label small">Price (₹) <span class="text-danger">*</span></label>
+                    <input type="number" name="rental_price[]" class="form-control product-price" min="0" step="1" placeholder="5000">
+                </div>
+                <div class="col-4 col-md-2">
+                    <label class="form-label small">Deposit (₹)</label>
+                    <input type="number" name="deposit_amount[]" class="form-control" min="0" step="1" value="0" placeholder="0">
+                </div>
+                <div class="col-4 col-md-3">
+                    <label class="form-label small">Image</label>
+                    <input type="file" name="image[]" class="form-control" accept="image/*">
+                </div>
+            </div>
+        </div>
+    `;
     
-    function generateForms() {
-        const count = parseInt(productCount.value);
-        container.innerHTML = '';
+    container.appendChild(row);
+    
+    // Focus on the product code field of the new row
+    row.querySelector('.product-code').focus();
+}
+
+function removeProductRow(id) {
+    const row = document.getElementById('productRow' + id);
+    const totalRows = document.querySelectorAll('.product-row').length;
+    
+    if (row && totalRows > 1) {
+        row.remove();
+    } else if (totalRows <= 1) {
+        alert('You need at least one product to add!');
+    }
+}
+
+// Form validation before submit
+document.getElementById('bulkAddForm').addEventListener('submit', function(e) {
+    const rows = document.querySelectorAll('.product-row');
+    let hasValidProduct = false;
+    let hasError = false;
+    
+    rows.forEach(row => {
+        const code = row.querySelector('.product-code').value.trim();
+        const name = row.querySelector('.product-name').value.trim();
+        const price = row.querySelector('.product-price').value.trim();
         
-        for (let i = 0; i < count; i++) {
-            const productForm = document.createElement('div');
-            productForm.className = 'card mb-3';
-            productForm.innerHTML = `
-                <div class="card-header bg-light">
-                    <h6 class="mb-0">Product #${i + 1}</h6>
-                </div>
-                <div class="card-body">
-                    <input type="hidden" name="product_count" value="${count}">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Product Code *</label>
-                            <input type="text" class="form-control" name="product_code_${i}" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Product Name *</label>
-                            <input type="text" class="form-control" name="name_${i}" required>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Daily Price *</label>
-                            <input type="number" class="form-control" name="rental_price_daily_${i}" step="0.01" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Deposit</label>
-                            <input type="number" class="form-control" name="deposit_amount_${i}" step="0.01" value="0">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Image</label>
-                            <input type="file" class="form-control" name="image_${i}" accept="image/*">
-                        </div>
-                    </div>
-                </div>
-            `;
-            container.appendChild(productForm);
+        // Remove previous error styling
+        row.classList.remove('has-error');
+        
+        // Check if row has any data
+        if (code || name || price) {
+            // If row has some data, all required fields must be filled
+            if (!code || !name || !price) {
+                row.classList.add('has-error');
+                hasError = true;
+            } else {
+                hasValidProduct = true;
+            }
         }
+    });
+    
+    if (hasError) {
+        e.preventDefault();
+        alert('Please fill in all required fields (Code, Name, Price) for each product row with data.');
+        return false;
     }
     
-    // Generate initial forms
-    generateForms();
+    if (!hasValidProduct) {
+        e.preventDefault();
+        alert('Please add at least one product with Code, Name, and Price!');
+        return false;
+    }
+    
+    // Show loading state
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    
+    return true;
+});
+
+// Initialize with one row
+document.addEventListener('DOMContentLoaded', function() {
+    addProductRow();
+});
+
+// Keyboard shortcut: Ctrl+Enter to add new row
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'Enter') {
+        addProductRow();
+    }
 });
 </script>
 {% endblock %}
