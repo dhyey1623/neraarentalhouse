@@ -39,6 +39,16 @@
         background-color: #f8fafc;
     }
     
+    /* My order highlight */
+    .order-row.my-order {
+        border-left: 4px solid #6366f1;
+        background-color: #fafafe;
+    }
+    
+    .order-row.my-order:hover {
+        background-color: #f5f5ff;
+    }
+    
     /* Table styling */
     .orders-table {
         margin-bottom: 0;
@@ -74,6 +84,29 @@
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.3px;
+    }
+    
+    /* Owner badges */
+    .owner-badge {
+        font-size: 0.65rem;
+        padding: 0.25em 0.5em;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+    
+    .owner-badge.mine {
+        background: #ddd6fe;
+        color: #7c3aed;
+    }
+    
+    .owner-badge.admin {
+        background: #1e293b;
+        color: #fff;
+    }
+    
+    .owner-badge.other {
+        background: #f1f5f9;
+        color: #64748b;
     }
     
     /* Product badges */
@@ -165,6 +198,18 @@
         transform: translateY(-1px);
     }
     
+    /* View only badge */
+    .view-only-badge {
+        background: #f1f5f9;
+        color: #94a3b8;
+        padding: 0.35rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
     /* Search/Filter card */
     .filter-card {
         border: none;
@@ -196,6 +241,49 @@
     /* Product check card */
     .product-check-card {
         background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    }
+    
+    /* Info alert */
+    .info-alert {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+        color: #1e40af;
+    }
+    
+    .info-alert i {
+        color: #3b82f6;
+    }
+    
+    /* Legend */
+    .legend-container {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+    
+    .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+    }
+    
+    .legend-color.mine {
+        background: #6366f1;
+    }
+    
+    .legend-color.other {
+        background: #e2e8f0;
     }
     
     /* Modal styling */
@@ -274,6 +362,16 @@
         padding: 1rem 1.25rem;
     }
     
+    /* Permission notice */
+    .permission-notice {
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 0.8rem;
+        color: #92400e;
+    }
+    
     /* Extra charges table */
     .extra-charges-table {
         font-size: 0.8125rem;
@@ -304,6 +402,11 @@
         margin-bottom: 0.75rem;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
         border: 1px solid #e9ecef;
+    }
+    
+    .order-card-mobile.my-order {
+        border-left: 4px solid #6366f1;
+        background: #fafafe;
     }
     
     .order-card-mobile-header {
@@ -352,6 +455,8 @@
         margin-top: 0.75rem;
         padding-top: 0.75rem;
         border-top: 1px solid #f1f5f9;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
     
     .order-card-mobile-products {
@@ -434,6 +539,14 @@
         .accessory-badge {
             font-size: 0.7rem;
             padding: 5px 10px;
+        }
+        
+        .legend-container {
+            gap: 0.75rem;
+        }
+        
+        .legend-item {
+            font-size: 0.7rem;
         }
     }
     
@@ -522,7 +635,12 @@
         
         .modal-footer .btn {
             flex: 1;
-            min-width: 100px;
+            min-width: 80px;
+        }
+        
+        .info-alert {
+            font-size: 0.75rem;
+            padding: 0.625rem 0.875rem;
         }
     }
     
@@ -570,6 +688,24 @@
         <a href="{{ url_for('create_order') }}" class="btn btn-primary">
             <i class="bi bi-plus-circle me-1"></i><span class="d-none d-sm-inline">New </span>Order
         </a>
+    </div>
+    
+    <!-- Permission Info Alert -->
+    <div class="info-alert mb-3">
+        <i class="bi bi-info-circle me-2"></i>
+        You can only <strong>edit orders you created</strong> while they are <strong>pending</strong>. Orders by Admin or other staff are view-only.
+    </div>
+    
+    <!-- Legend -->
+    <div class="legend-container mb-3">
+        <div class="legend-item">
+            <div class="legend-color mine"></div>
+            <span>My Orders</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color other"></div>
+            <span>Other's Orders (View Only)</span>
+        </div>
     </div>
     
     <!-- Search Section -->
@@ -650,14 +786,22 @@
                             <th class="d-none d-md-table-cell">Return</th>
                             <th>Amount</th>
                             <th>Status</th>
-                            <th class="text-center">Action</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for order in orders %}
-                        <tr class="order-row" onclick="showOrderDetails({{ order.id }})">
+                        {% set is_my_order = order.staff_id == current_user.id %}
+                        {% set is_admin_order = order.staff.role == 'admin' %}
+                        {% set can_edit = is_my_order and not is_admin_order and order.status == 'pending' %}
+                        <tr class="order-row {% if is_my_order %}my-order{% endif %}" onclick="showOrderDetails({{ order.id }})">
                             <td>
                                 <span class="fw-semibold text-primary">#{{ order.id }}</span>
+                                {% if is_my_order %}
+                                <span class="owner-badge mine ms-1 d-none d-xl-inline">Mine</span>
+                                {% elif is_admin_order %}
+                                <span class="owner-badge admin ms-1 d-none d-xl-inline">Admin</span>
+                                {% endif %}
                             </td>
                             <td>
                                 <div class="fw-medium">{{ order.customer.name[:15] }}{% if order.customer.name|length > 15 %}...{% endif %}</div>
@@ -690,11 +834,33 @@
                                 {% endif %}
                             </td>
                             <td class="text-center" onclick="event.stopPropagation();">
+                                <!-- View Invoice - Always available -->
                                 <a href="{{ url_for('view_invoice', order_id=order.id) }}" 
                                    class="btn btn-sm btn-outline-primary action-btn" 
                                    title="View Invoice">
-                                    <i class="bi bi-receipt me-1"></i><span class="d-none d-xl-inline">Invoice</span>
+                                    <i class="bi bi-receipt"></i>
                                 </a>
+                                
+                                {% if can_edit %}
+                                <!-- Edit Order - Only for MY pending orders -->
+                                <a href="{{ url_for('staff_edit_order', order_id=order.id) }}" 
+                                   class="btn btn-sm btn-outline-warning action-btn ms-1" 
+                                   title="Edit Order">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                
+                                <!-- Add Products - Only for MY pending orders -->
+                                <a href="{{ url_for('add_products_to_order', order_id=order.id) }}" 
+                                   class="btn btn-sm btn-outline-success action-btn ms-1" 
+                                   title="Add Products">
+                                    <i class="bi bi-plus"></i>
+                                </a>
+                                {% elif not is_my_order %}
+                                <!-- View Only indicator for other's orders -->
+                                <span class="view-only-badge ms-1" title="View Only - Created by {{ order.staff.name }}">
+                                    <i class="bi bi-eye"></i>
+                                </span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% else %}
@@ -721,10 +887,20 @@
         </div>
         
         {% for order in orders %}
-        <div class="order-card-mobile" onclick="showOrderDetails({{ order.id }})">
+        {% set is_my_order = order.staff_id == current_user.id %}
+        {% set is_admin_order = order.staff.role == 'admin' %}
+        {% set can_edit = is_my_order and not is_admin_order and order.status == 'pending' %}
+        <div class="order-card-mobile {% if is_my_order %}my-order{% endif %}" onclick="showOrderDetails({{ order.id }})">
             <div class="order-card-mobile-header">
                 <div>
                     <span class="order-card-mobile-id">#{{ order.id }}</span>
+                    {% if is_my_order %}
+                    <span class="owner-badge mine ms-1">Mine</span>
+                    {% elif is_admin_order %}
+                    <span class="owner-badge admin ms-1">Admin</span>
+                    {% else %}
+                    <span class="owner-badge other ms-1">{{ order.staff.name[:8] }}</span>
+                    {% endif %}
                     {% if order.status == 'pending' %}
                     <span class="badge bg-warning status-badge ms-2">Pending</span>
                     {% elif order.status == 'approved' %}
@@ -768,11 +944,27 @@
             </div>
             
             <div class="order-card-mobile-footer" onclick="event.stopPropagation();">
-                <small class="text-muted">Tap for details</small>
-                <a href="{{ url_for('view_invoice', order_id=order.id) }}" 
-                   class="btn btn-sm btn-primary action-btn">
-                    <i class="bi bi-receipt me-1"></i>Invoice
-                </a>
+                <small class="text-muted">
+                    {% if can_edit %}
+                    <i class="bi bi-pencil-square text-warning me-1"></i>Editable
+                    {% elif not is_my_order %}
+                    <i class="bi bi-eye text-muted me-1"></i>View Only
+                    {% else %}
+                    <i class="bi bi-lock text-muted me-1"></i>{{ order.status|capitalize }}
+                    {% endif %}
+                </small>
+                <div class="d-flex gap-1">
+                    <a href="{{ url_for('view_invoice', order_id=order.id) }}" 
+                       class="btn btn-sm btn-primary action-btn">
+                        <i class="bi bi-receipt me-1"></i>Invoice
+                    </a>
+                    {% if can_edit %}
+                    <a href="{{ url_for('staff_edit_order', order_id=order.id) }}" 
+                       class="btn btn-sm btn-warning action-btn">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
         {% else %}
@@ -784,7 +976,7 @@
     </div>
 </div>
 
-<!-- Order Details Modal (View Only) -->
+<!-- Order Details Modal (View Only for non-owned orders) -->
 <div class="modal fade" id="orderDetailsModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -801,12 +993,12 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" id="modalFooter">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                     <i class="bi bi-x-lg me-1"></i>Close
                 </button>
                 <a href="#" id="viewInvoiceBtn" class="btn btn-primary">
-                    <i class="bi bi-receipt me-1"></i>View Invoice
+                    <i class="bi bi-receipt me-1"></i>Invoice
                 </a>
             </div>
         </div>
@@ -815,6 +1007,9 @@
 
 <!-- Hidden div to store orders data -->
 {% for order in orders %}
+{% set is_my_order = order.staff_id == current_user.id %}
+{% set is_admin_order = order.staff.role == 'admin' %}
+{% set can_edit = is_my_order and not is_admin_order and order.status == 'pending' %}
 <div class="order-data d-none" 
      data-order-id="{{ order.id }}"
      data-transaction-id="{{ order.transaction_id }}"
@@ -824,6 +1019,9 @@
      data-customer-email="{{ order.customer.email or '' }}"
      data-customer-address="{{ order.customer.address or '' }}"
      data-staff-name="{{ order.staff.name }}"
+     data-staff-role="{{ order.staff.role }}"
+     data-is-mine="{{ 'true' if is_my_order else 'false' }}"
+     data-can-edit="{{ 'true' if can_edit else 'false' }}"
      data-delivery-date="{{ order.delivery_date.strftime('%d-%m-%Y') }}"
      data-return-date="{{ order.return_date.strftime('%d-%m-%Y') }}"
      data-status="{{ order.status }}"
@@ -901,6 +1099,9 @@ function getOrderData(orderId) {
             address: orderDiv.dataset.customerAddress
         },
         staff: orderDiv.dataset.staffName,
+        staffRole: orderDiv.dataset.staffRole,
+        isMine: orderDiv.dataset.isMine === 'true',
+        canEdit: orderDiv.dataset.canEdit === 'true',
         deliveryDate: orderDiv.dataset.deliveryDate,
         returnDate: orderDiv.dataset.returnDate,
         status: orderDiv.dataset.status,
@@ -922,6 +1123,16 @@ function showOrderDetails(orderId) {
         'completed': '<span class="badge bg-info status-badge">Completed</span>',
         'cancelled': '<span class="badge bg-danger status-badge">Cancelled</span>'
     };
+    
+    // Owner badge
+    let ownerBadge = '';
+    if (order.isMine) {
+        ownerBadge = '<span class="owner-badge mine ms-2">My Order</span>';
+    } else if (order.staffRole === 'admin') {
+        ownerBadge = '<span class="owner-badge admin ms-2">Admin Order</span>';
+    } else {
+        ownerBadge = '<span class="owner-badge other ms-2">Other Staff</span>';
+    }
     
     let productsHtml = order.products.map(item => `
         <div class="product-item d-flex align-items-center gap-3">
@@ -983,6 +1194,30 @@ function showOrderDetails(orderId) {
         `;
     }
     
+    // Permission notice
+    let permissionNotice = '';
+    if (!order.canEdit) {
+        if (order.isMine) {
+            permissionNotice = `
+                <div class="col-12">
+                    <div class="permission-notice">
+                        <i class="bi bi-lock me-2"></i>
+                        Order is <strong>${order.status}</strong> - cannot edit. Only pending orders can be edited.
+                    </div>
+                </div>
+            `;
+        } else {
+            permissionNotice = `
+                <div class="col-12">
+                    <div class="permission-notice">
+                        <i class="bi bi-eye me-2"></i>
+                        <strong>View Only</strong> - This order was created by ${order.staff}. You can only edit orders you created.
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
     const content = `
         <div class="row g-3 g-md-4">
             <!-- Order Info -->
@@ -990,7 +1225,7 @@ function showOrderDetails(orderId) {
                 <div class="card info-card h-100">
                     <div class="card-body">
                         <p class="detail-label">Order Information</p>
-                        <p><strong>Order ID:</strong> #${order.id}</p>
+                        <p><strong>Order ID:</strong> #${order.id} ${ownerBadge}</p>
                         <p><strong>Transaction:</strong> ${order.transactionId}</p>
                         <p><strong>Created By:</strong> ${order.staff}</p>
                         <p><strong>Status:</strong> ${statusBadge[order.status] || order.status}</p>
@@ -1034,6 +1269,8 @@ function showOrderDetails(orderId) {
             </div>
             ` : ''}
             
+            ${permissionNotice}
+            
             <!-- Total -->
             <div class="col-12">
                 <div class="card total-card text-white">
@@ -1047,7 +1284,29 @@ function showOrderDetails(orderId) {
     `;
     
     document.getElementById('orderDetailsContent').innerHTML = content;
-    document.getElementById('viewInvoiceBtn').href = '/order/' + order.id + '/invoice';
+    
+    // Update modal footer with appropriate buttons
+    let footerHtml = `
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>Close
+        </button>
+        <a href="/order/${order.id}/invoice" class="btn btn-primary">
+            <i class="bi bi-receipt me-1"></i>Invoice
+        </a>
+    `;
+    
+    if (order.canEdit) {
+        footerHtml += `
+            <a href="/staff/orders/edit/${order.id}" class="btn btn-warning">
+                <i class="bi bi-pencil me-1"></i>Edit
+            </a>
+            <a href="/order/${order.id}/add-products" class="btn btn-success">
+                <i class="bi bi-plus me-1"></i>Add Products
+            </a>
+        `;
+    }
+    
+    document.getElementById('modalFooter').innerHTML = footerHtml;
     
     new bootstrap.Modal(document.getElementById('orderDetailsModal')).show();
 }
