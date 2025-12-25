@@ -1,0 +1,376 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit My Order #{{ order.id }} - NERAA Rental{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-card {
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+    .product-card.selected {
+        border-color: #6366f1;
+        background: #f0f0ff;
+    }
+    .product-img {
+        width: 45px;
+        height: 45px;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+    .product-placeholder {
+        width: 45px;
+        height: 45px;
+        background: #e2e8f0;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .search-results.show {
+        display: block;
+    }
+    .search-item {
+        padding: 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .search-item:hover {
+        background: #f8fafc;
+    }
+    .search-item img {
+        width: 35px;
+        height: 35px;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-pencil me-2"></i>Edit My Order #{{ order.id }}</h4>
+            <small class="text-muted">Only pending orders can be edited</small>
+        </div>
+        <a href="{{ url_for('staff_view_orders') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+    
+    <div class="alert alert-warning py-2">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        You can only edit orders <strong>you created</strong> while they are <strong>pending</strong>.
+    </div>
+    
+    <form method="POST" id="editOrderForm">
+        <!-- Customer Details -->
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h6 class="mb-0"><i class="bi bi-person me-2"></i>Customer Details</h6>
+            </div>
+            <div class="card-body py-3">
+                <div class="row g-2">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Customer Name <span class="text-danger">*</span></label>
+                        <input type="text" name="customer_name" class="form-control" 
+                               value="{{ order.customer.name }}" required>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small">Phone <span class="text-danger">*</span></label>
+                        <input type="tel" name="customer_phone" class="form-control" 
+                               value="{{ order.customer.phone }}" required>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small">Alt Phone</label>
+                        <input type="tel" name="secondary_phone" class="form-control" 
+                               value="{{ order.customer.secondary_phone or '' }}">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Email</label>
+                        <input type="email" name="customer_email" class="form-control" 
+                               value="{{ order.customer.email or '' }}">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label small">Address</label>
+                        <input type="text" name="customer_address" class="form-control" 
+                               value="{{ order.customer.address or '' }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Order Dates -->
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h6 class="mb-0"><i class="bi bi-calendar me-2"></i>Rental Period</h6>
+            </div>
+            <div class="card-body py-3">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small">Delivery Date <span class="text-danger">*</span></label>
+                        <input type="date" name="delivery_date" class="form-control" 
+                               value="{{ order.delivery_date.strftime('%Y-%m-%d') }}" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Return Date <span class="text-danger">*</span></label>
+                        <input type="date" name="return_date" class="form-control" 
+                               value="{{ order.return_date.strftime('%Y-%m-%d') }}" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2">{{ order.notes or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Products -->
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h6 class="mb-0"><i class="bi bi-box-seam me-2"></i>Products</h6>
+            </div>
+            <div class="card-body py-3">
+                <div class="position-relative mb-3">
+                    <input type="text" id="productSearch" class="form-control" placeholder="🔍 Search product code or name to add...">
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+                <div id="selectedProducts">
+                    {% for item in order.items %}
+                    <div class="product-card selected" data-product-id="{{ item.product_id }}">
+                        <div class="d-flex align-items-center gap-2">
+                            {% if item.product.image_path %}
+                            <img src="{{ url_for('static', filename=item.product.image_path) }}" class="product-img">
+                            {% else %}
+                            <div class="product-placeholder"><i class="bi bi-image text-muted"></i></div>
+                            {% endif %}
+                            <div class="flex-grow-1">
+                                <span class="badge bg-secondary">{{ item.product.product_code }}</span>
+                                <div class="small">{{ item.product.name }}</div>
+                            </div>
+                            <span class="text-primary fw-bold">₹{{ "%.0f"|format(item.price) }}</span>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeProduct({{ item.product_id }})">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <input type="hidden" name="product_id[]" value="{{ item.product_id }}">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Accessories -->
+        <div class="card mb-3">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-bag me-2"></i>Accessories</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addAccessory()">
+                    <i class="bi bi-plus"></i> Add
+                </button>
+            </div>
+            <div class="card-body py-2" id="accessoriesContainer">
+                {% for acc in order.accessories %}
+                <div class="accessory-row d-flex gap-2 py-2 border-bottom">
+                    <input type="text" name="accessory_name[]" class="form-control" placeholder="Name" value="{{ acc.accessory_name }}">
+                    <input type="text" name="accessory_remarks[]" class="form-control" placeholder="Remarks" value="{{ acc.remarks or '' }}">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.accessory-row').remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                {% else %}
+                <p class="text-muted small mb-0 py-2">No accessories added</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Extra Charges -->
+        <div class="card mb-3">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-currency-rupee me-2"></i>Extra Charges</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addExtraCharge()">
+                    <i class="bi bi-plus"></i> Add
+                </button>
+            </div>
+            <div class="card-body py-2" id="extraChargesContainer">
+                {% for extra in order.extra_charges %}
+                <div class="extra-row d-flex gap-2 py-2 border-bottom flex-wrap">
+                    <input type="text" name="extra_description[]" class="form-control" style="flex:2;min-width:100px;" placeholder="Description" value="{{ extra.description }}">
+                    <input type="number" name="extra_amount[]" class="form-control" style="flex:1;min-width:80px;" placeholder="Amount" value="{{ extra.amount }}" min="0">
+                    <input type="text" name="extra_remarks[]" class="form-control" style="flex:1;min-width:80px;" placeholder="Remarks" value="{{ extra.remarks or '' }}">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.extra-row').remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                {% else %}
+                <p class="text-muted small mb-0 py-2">No extra charges</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Current Total -->
+        <div class="alert alert-primary mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <span><strong>Current Total:</strong></span>
+                <span class="h5 mb-0">₹{{ "%.0f"|format(order.total_amount) }}</span>
+            </div>
+        </div>
+        
+        <div class="d-flex gap-2 mb-4 flex-wrap">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i>Update Order
+            </button>
+            <a href="{{ url_for('staff_view_orders') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const productsData = JSON.parse('{{ products|tojson|safe }}');
+let selectedProductIds = [{% for item in order.items %}{{ item.product_id }}{% if not loop.last %},{% endif %}{% endfor %}];
+
+const searchInput = document.getElementById('productSearch');
+const searchResults = document.getElementById('searchResults');
+
+searchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    if (query.length < 1) {
+        searchResults.classList.remove('show');
+        return;
+    }
+    
+    const matches = productsData.filter(p => 
+        (p.product_code.toLowerCase().includes(query) || p.name.toLowerCase().includes(query)) &&
+        !selectedProductIds.includes(p.id)
+    );
+    
+    if (matches.length === 0) {
+        searchResults.innerHTML = '<div class="p-3 text-muted">No products found</div>';
+    } else {
+        searchResults.innerHTML = matches.map(p => `
+            <div class="search-item" onclick="selectProduct(${p.id})">
+                ${p.image_path ? 
+                    `<img src="/static/${p.image_path}" alt="">` : 
+                    `<div class="product-placeholder" style="width:35px;height:35px;"><i class="bi bi-image"></i></div>`
+                }
+                <div class="flex-grow-1">
+                    <strong>${p.product_code}</strong> - ${p.name}
+                    <div class="text-primary small">₹${p.rental_price}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+    searchResults.classList.add('show');
+});
+
+searchInput.addEventListener('blur', () => setTimeout(() => searchResults.classList.remove('show'), 200));
+
+function selectProduct(id) {
+    const product = productsData.find(p => p.id === id);
+    if (!product || selectedProductIds.includes(id)) return;
+    
+    selectedProductIds.push(id);
+    searchInput.value = '';
+    searchResults.classList.remove('show');
+    
+    const container = document.getElementById('selectedProducts');
+    const card = document.createElement('div');
+    card.className = 'product-card selected';
+    card.setAttribute('data-product-id', id);
+    card.innerHTML = `
+        <div class="d-flex align-items-center gap-2">
+            ${product.image_path ? 
+                `<img src="/static/${product.image_path}" class="product-img">` : 
+                `<div class="product-placeholder"><i class="bi bi-image text-muted"></i></div>`
+            }
+            <div class="flex-grow-1">
+                <span class="badge bg-secondary">${product.product_code}</span>
+                <div class="small">${product.name}</div>
+            </div>
+            <span class="text-primary fw-bold">₹${product.rental_price}</span>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeProduct(${id})">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <input type="hidden" name="product_id[]" value="${id}">
+    `;
+    container.appendChild(card);
+}
+
+function removeProduct(id) {
+    if (selectedProductIds.length <= 1) {
+        alert('Order must have at least one product!');
+        return;
+    }
+    selectedProductIds = selectedProductIds.filter(pid => pid !== id);
+    const card = document.querySelector(`.product-card[data-product-id="${id}"]`);
+    if (card) card.remove();
+}
+
+function addAccessory() {
+    const container = document.getElementById('accessoriesContainer');
+    const emptyMsg = container.querySelector('p.text-muted');
+    if (emptyMsg) emptyMsg.remove();
+    
+    const row = document.createElement('div');
+    row.className = 'accessory-row d-flex gap-2 py-2 border-bottom';
+    row.innerHTML = `
+        <input type="text" name="accessory_name[]" class="form-control" placeholder="Accessory name">
+        <input type="text" name="accessory_remarks[]" class="form-control" placeholder="Remarks">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.accessory-row').remove()">
+            <i class="bi bi-trash"></i>
+        </button>
+    `;
+    container.appendChild(row);
+}
+
+function addExtraCharge() {
+    const container = document.getElementById('extraChargesContainer');
+    const emptyMsg = container.querySelector('p.text-muted');
+    if (emptyMsg) emptyMsg.remove();
+    
+    const row = document.createElement('div');
+    row.className = 'extra-row d-flex gap-2 py-2 border-bottom flex-wrap';
+    row.innerHTML = `
+        <input type="text" name="extra_description[]" class="form-control" style="flex:2;min-width:100px;" placeholder="Description">
+        <input type="number" name="extra_amount[]" class="form-control" style="flex:1;min-width:80px;" placeholder="Amount" min="0">
+        <input type="text" name="extra_remarks[]" class="form-control" style="flex:1;min-width:80px;" placeholder="Remarks">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.extra-row').remove()">
+            <i class="bi bi-trash"></i>
+        </button>
+    `;
+    container.appendChild(row);
+}
+
+// Form validation
+document.getElementById('editOrderForm').addEventListener('submit', function(e) {
+    if (selectedProductIds.length === 0) {
+        e.preventDefault();
+        alert('Please select at least one product!');
+        return;
+    }
+});
+</script>
+{% endblock %}
