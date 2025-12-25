@@ -13,8 +13,19 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'neraa-rental-house-secret-key-2025'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///rental_system.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'neraa-rental-house-secret-key-2025')
+
+# Database Configuration - PostgreSQL for Production, SQLite for Local
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    # Fix for Render PostgreSQL URL (postgres:// -> postgresql://)
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+else:
+    # Local development - SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///rental_system.db'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -352,29 +363,62 @@ def bulk_add_products():
         images = request.files.getlist('image[]')
         
         added_count = 0
+        skipped_count = 0
+        
         for i in range(len(product_codes)):
-            if product_codes[i] and names[i]:
-                if Product.query.filter_by(product_code=product_codes[i]).first():
-                    continue
-                
-                image_path = None
-                if i < len(images) and images[i] and images[i].filename and allowed_file(images[i].filename):
-                    filename = secure_filename(f"{product_codes[i]}_{images[i].filename}")
+            code = product_codes[i].strip() if product_codes[i] else ''
+            name = names[i].strip() if names[i] else ''
+            price = rental_prices[i].strip() if rental_prices[i] else ''
+            
+            # Skip empty rows
+            if not code and not name and not price:
+                continue
+            
+            # Skip if required fields are missing
+            if not code or not name or not price:
+                skipped_count += 1
+                continue
+            
+            # Skip if product code already exists
+            if Product.query.filter_by(product_code=code).first():
+                skipped_count += 1
+                continue
+            
+            # Handle image upload
+            image_path = None
+            if i < len(images) and images[i] and images[i].filename:
+                if allowed_file(images[i].filename):
+                    filename = secure_filename(f"{code}_{images[i].filename}")
                     images[i].save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                     image_path = f"uploads/{filename}"
-                
-                new_product = Product(
-                    product_code=product_codes[i],
-                    name=names[i],
-                    rental_price=float(rental_prices[i]) if rental_prices[i] else 0,
-                    deposit_amount=float(deposit_amounts[i]) if deposit_amounts[i] else 0,
-                    image_path=image_path
-                )
-                db.session.add(new_product)
-                added_count += 1
+            
+            # Get deposit amount
+            deposit = 0
+            if i < len(deposit_amounts) and deposit_amounts[i]:
+                try:
+                    deposit = float(deposit_amounts[i])
+                except:
+                    deposit = 0
+            
+            # Create product
+            new_product = Product(
+                product_code=code,
+                name=name,
+                rental_price=float(price),
+                deposit_amount=deposit,
+                image_path=image_path
+            )
+            db.session.add(new_product)
+            added_count += 1
         
-        db.session.commit()
-        flash(f'{added_count} products added successfully', 'success')
+        if added_count > 0:
+            db.session.commit()
+            flash(f'{added_count} products added successfully!', 'success')
+            if skipped_count > 0:
+                flash(f'{skipped_count} products skipped (duplicate code or missing info)', 'warning')
+        else:
+            flash('No products were added. Please check your input.', 'error')
+        
         return redirect(url_for('manage_products'))
     
     return render_template('bulk_add_products.html')
@@ -672,15 +716,24 @@ def create_order():
     
     return render_template('create_order.html', products=products_data)
 
-# Add products to existing order (staff - only for pending orders)
+# Add products to existing order (staff - only for pending orders they created)
 @app.route('/order/<int:order_id>/add-products', methods=['GET', 'POST'])
 @login_required
 def add_products_to_order(order_id):
     order = Order.query.get_or_404(order_id)
     
+    # Check permissions - staff can only add to their own pending orders
+    if current_user.role == 'staff':
+        if order.staff_id != current_user.id:
+            flash('You can only modify orders you created!', 'error')
+            return redirect(url_for('staff_view_orders'))
+        if order.staff.role == 'admin':
+            flash('You cannot modify admin orders!', 'error')
+            return redirect(url_for('staff_view_orders'))
+    
     if order.status != 'pending':
         flash('Cannot modify approved orders', 'error')
-        return redirect(url_for('staff_view_orders'))
+        return redirect(url_for('staff_view_orders') if current_user.role == 'staff' else url_for('manage_orders'))
     
     if request.method == 'POST':
         product_ids = request.form.getlist('product_id[]')
@@ -759,6 +812,103 @@ def staff_view_orders():
     
     orders = query.order_by(Order.created_at.desc()).all()
     return render_template('staff_view_orders.html', orders=orders)
+
+# Staff edit their own order
+@app.route('/staff/orders/edit/<int:order_id>', methods=['GET', 'POST'])
+@login_required
+def staff_edit_order(order_id):
+    order = Order.query.get_or_404(order_id)
+    
+    # Check if staff can edit this order
+    # Staff can only edit their OWN orders that are PENDING
+    if order.staff_id != current_user.id:
+        flash('You can only edit orders you created!', 'error')
+        return redirect(url_for('staff_view_orders'))
+    
+    if order.staff.role == 'admin':
+        flash('You cannot edit admin orders!', 'error')
+        return redirect(url_for('staff_view_orders'))
+    
+    if order.status != 'pending':
+        flash('You can only edit pending orders!', 'error')
+        return redirect(url_for('staff_view_orders'))
+    
+    if request.method == 'POST':
+        # Update customer
+        order.customer.name = request.form.get('customer_name')
+        order.customer.phone = request.form.get('customer_phone')
+        order.customer.secondary_phone = request.form.get('secondary_phone')
+        order.customer.email = request.form.get('customer_email')
+        order.customer.address = request.form.get('customer_address')
+        
+        # Update dates
+        order.delivery_date = datetime.strptime(request.form.get('delivery_date'), '%Y-%m-%d')
+        order.return_date = datetime.strptime(request.form.get('return_date'), '%Y-%m-%d')
+        order.notes = request.form.get('notes')
+        
+        # Update products
+        OrderItem.query.filter_by(order_id=order.id).delete()
+        OrderAccessory.query.filter_by(order_id=order.id).delete()
+        OrderExtraCharge.query.filter_by(order_id=order.id).delete()
+        
+        total = 0
+        product_ids = request.form.getlist('product_id[]')
+        for pid in product_ids:
+            if pid:
+                product = Product.query.get(int(pid))
+                if product:
+                    item = OrderItem(
+                        order_id=order.id,
+                        product_id=product.id,
+                        price=product.rental_price
+                    )
+                    db.session.add(item)
+                    total += product.rental_price
+        
+        # Update accessories
+        acc_names = request.form.getlist('accessory_name[]')
+        acc_remarks = request.form.getlist('accessory_remarks[]')
+        for i, name in enumerate(acc_names):
+            if name:
+                acc = OrderAccessory(
+                    order_id=order.id,
+                    accessory_name=name,
+                    remarks=acc_remarks[i] if i < len(acc_remarks) else ''
+                )
+                db.session.add(acc)
+        
+        # Update extra charges
+        extra_desc = request.form.getlist('extra_description[]')
+        extra_amounts = request.form.getlist('extra_amount[]')
+        extra_remarks = request.form.getlist('extra_remarks[]')
+        
+        for i, desc in enumerate(extra_desc):
+            if desc and extra_amounts[i]:
+                extra = OrderExtraCharge(
+                    order_id=order.id,
+                    description=desc,
+                    amount=float(extra_amounts[i]),
+                    remarks=extra_remarks[i] if i < len(extra_remarks) else ''
+                )
+                db.session.add(extra)
+                total += float(extra_amounts[i])
+        
+        order.total_amount = total
+        db.session.commit()
+        flash('Order updated successfully!', 'success')
+        return redirect(url_for('staff_view_orders'))
+    
+    products = Product.query.filter_by(is_active=True).all()
+    products_data = [{
+        'id': p.id,
+        'product_code': p.product_code,
+        'name': p.name,
+        'rental_price': float(p.rental_price),
+        'deposit_amount': float(p.deposit_amount),
+        'image_path': p.image_path if p.image_path else ''
+    } for p in products]
+    
+    return render_template('staff_edit_order.html', order=order, products=products_data)
 
 # Check product availability
 @app.route('/api/check-availability', methods=['POST'])
