@@ -1,0 +1,51 @@
+<!-- ==================== FILE: templates/edit_product.html ==================== -->
+{% extends "base.html" %}
+{% block title %}Edit Product{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Product</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Product Code *</label>
+                        <input type="text" class="form-control" name="product_code" value="{{ product.product_code }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Product Name *</label>
+                        <input type="text" class="form-control" name="name" value="{{ product.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Current Image</label>
+                        {% if product.image_path %}
+                        <div class="mb-2">
+                            <img src="{{ url_for('static', filename=product.image_path) }}" alt="{{ product.name }}" style="max-width: 200px; border-radius: 8px;">
+                        </div>
+                        {% endif %}
+                        <label class="form-label">Upload New Image</label>
+                        <input type="file" class="form-control" name="image" accept="image/*">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Daily Price *</label>
+                        <input type="number" class="form-control" name="rental_price_daily" value="{{ product.rental_price_daily }}" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Deposit</label>
+                        <input type="number" class="form-control" name="deposit_amount" value="{{ product.deposit_amount }}" step="0.01">
+                    </div>
+                    <div class="text-end">
+                        <a href="{{ url_for('manage_products') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check"></i> Update
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

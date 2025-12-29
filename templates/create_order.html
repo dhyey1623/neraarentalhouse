@@ -1,0 +1,511 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Order - NERAA Rental{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-card {
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+    
+    .product-card.selected {
+        border-color: #6366f1;
+        background: #f0f0ff;
+    }
+    
+    .product-img {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    
+    .product-placeholder {
+        width: 50px;
+        height: 50px;
+        background: #e2e8f0;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* IMPORTANT: Override card overflow to allow dropdown to show */
+    .products-card {
+        overflow: visible !important;
+    }
+    
+    .products-card .card-body {
+        overflow: visible !important;
+    }
+    
+    .search-wrapper {
+        position: relative;
+        z-index: 1050;
+    }
+    
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #6366f1;
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        max-height: 350px;
+        overflow-y: auto;
+        z-index: 9999;
+        display: none;
+        margin-top: 5px;
+    }
+    
+    .search-results.show {
+        display: block;
+    }
+    
+    .search-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.2s;
+    }
+    
+    .search-item:hover {
+        background: #f0f0ff;
+    }
+    
+    .search-item:last-child {
+        border-bottom: none;
+    }
+    
+    .search-item img {
+        width: 45px;
+        height: 45px;
+        object-fit: cover;
+        border-radius: 8px;
+        flex-shrink: 0;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .search-item .product-placeholder {
+        width: 45px;
+        height: 45px;
+        min-width: 45px;
+    }
+    
+    .search-count {
+        background: #6366f1;
+        color: white;
+        padding: 10px 15px;
+        font-size: 13px;
+        font-weight: 500;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .total-bar {
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        color: white;
+        border-radius: 10px;
+        padding: 15px;
+        position: sticky;
+        bottom: 80px;
+        z-index: 99;
+    }
+    
+    @media (min-width: 992px) {
+        .total-bar {
+            position: sticky;
+            top: 20px;
+            bottom: auto;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .product-img, .product-placeholder {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .search-results {
+            max-height: 300px;
+        }
+        
+        .search-item {
+            padding: 10px 12px;
+        }
+        
+        .search-item img,
+        .search-item .product-placeholder {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-plus-circle me-2"></i>New Order</h4>
+    </div>
+    
+    <form method="POST" id="orderForm">
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Customer -->
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="bi bi-person me-2"></i>Customer</h6>
+                    </div>
+                    <div class="card-body py-3">
+                        <div class="row g-2">
+                            <div class="col-12 col-md-6">
+                                <input type="text" name="customer_name" class="form-control" placeholder="Customer Name *" required>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <input type="tel" name="customer_phone" class="form-control" placeholder="Phone *" required>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <input type="tel" name="secondary_phone" class="form-control" placeholder="Alt Phone">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <input type="email" name="customer_email" class="form-control" placeholder="Email">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <input type="text" name="customer_address" class="form-control" placeholder="Address">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dates -->
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="bi bi-calendar me-2"></i>Rental Period</h6>
+                    </div>
+                    <div class="card-body py-3">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small">Delivery <span class="text-danger">*</span></label>
+                                <input type="date" name="delivery_date" id="deliveryDate" class="form-control" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small">Return <span class="text-danger">*</span></label>
+                                <input type="date" name="return_date" id="returnDate" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Products - IMPORTANT: Added products-card class to override overflow -->
+                <div class="card mb-3 products-card">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="bi bi-box-seam me-2"></i>Products</h6>
+                    </div>
+                    <div class="card-body py-3">
+                        <!-- Search wrapper with high z-index -->
+                        <div class="search-wrapper mb-3">
+                            <input type="text" id="productSearch" class="form-control form-control-lg" 
+                                   placeholder="🔍 Search by product code (e.g. np, mp...)" autocomplete="off">
+                            <div id="searchResults" class="search-results"></div>
+                        </div>
+                        <div id="selectedProducts">
+                            <p class="text-muted small mb-0">Search & select products above</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Accessories -->
+                <div class="card mb-3">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-bag me-2"></i>Accessories</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addAccessory()">
+                            <i class="bi bi-plus"></i>
+                        </button>
+                    </div>
+                    <div class="card-body py-2" id="accessoriesContainer">
+                        <p class="text-muted small mb-0">Optional - No extra charge</p>
+                    </div>
+                </div>
+                
+                <!-- Extra Charges -->
+                <div class="card mb-3">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-currency-rupee me-2"></i>Extra Charges</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addExtraCharge()">
+                            <i class="bi bi-plus"></i>
+                        </button>
+                    </div>
+                    <div class="card-body py-2" id="extraChargesContainer">
+                        <p class="text-muted small mb-0">Optional - Add alterations, delivery, etc.</p>
+                    </div>
+                </div>
+                
+                <!-- Notes -->
+                <div class="card mb-3">
+                    <div class="card-body py-3">
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Notes (optional)"></textarea>
+                    </div>
+                </div>
+                
+                <div class="d-lg-none mb-4">
+                    <button type="submit" class="btn btn-primary w-100 btn-lg">
+                        <i class="bi bi-check-circle me-1"></i>Create Order
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Total Sidebar -->
+            <div class="col-lg-4">
+                <div class="total-bar">
+                    <h6 class="mb-2"><i class="bi bi-receipt me-2"></i>Summary</h6>
+                    <div id="summaryProducts" class="small opacity-75 mb-2">No products</div>
+                    <hr class="opacity-50 my-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Total:</span>
+                        <span class="h4 mb-0" id="totalAmount">₹0</span>
+                    </div>
+                    <button type="submit" class="btn btn-light w-100 mt-3 d-none d-lg-block">
+                        <i class="bi bi-check-circle me-1"></i>Create Order
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Parse products data safely
+let productsData = [];
+try {
+    productsData = JSON.parse('{{ products|tojson|safe }}');
+    console.log('Total products loaded:', productsData.length);
+} catch(e) {
+    console.error('Error loading products:', e);
+}
+
+let selectedProducts = [];
+
+// Initialize dates
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('deliveryDate').min = today;
+    document.getElementById('returnDate').min = today;
+    
+    document.getElementById('deliveryDate').addEventListener('change', function() {
+        document.getElementById('returnDate').min = this.value;
+    });
+});
+
+// Product Search
+const searchInput = document.getElementById('productSearch');
+const searchResults = document.getElementById('searchResults');
+
+searchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    
+    if (query.length < 1) {
+        searchResults.classList.remove('show');
+        return;
+    }
+    
+    // Filter products - search in BOTH product_code AND name
+    const matches = productsData.filter(p => {
+        const codeMatch = p.product_code.toLowerCase().includes(query);
+        const nameMatch = p.name.toLowerCase().includes(query);
+        const notSelected = !selectedProducts.find(sp => sp.id === p.id);
+        return (codeMatch || nameMatch) && notSelected;
+    });
+    
+    console.log('Search:', query, '| Found:', matches.length);
+    
+    if (matches.length === 0) {
+        searchResults.innerHTML = `
+            <div class="search-count bg-secondary">No products found</div>
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-search" style="font-size: 2rem;"></i>
+                <p class="mt-2 mb-0">No products match "${query}"</p>
+            </div>
+        `;
+    } else {
+        let html = `<div class="search-count">
+            <i class="bi bi-box-seam me-2"></i>${matches.length} product(s) found - Click to select
+        </div>`;
+        
+        html += matches.map(p => `
+            <div class="search-item" onclick="selectProduct(${p.id})">
+                ${p.image_path ? 
+                    `<img src="/static/${p.image_path}" alt="${p.name}">` : 
+                    `<div class="product-placeholder"><i class="bi bi-image text-muted"></i></div>`
+                }
+                <div class="flex-grow-1">
+                    <div><strong class="text-primary">${p.product_code}</strong> - ${p.name}</div>
+                    <div class="text-success fw-bold">₹${p.rental_price.toLocaleString('en-IN')}</div>
+                </div>
+                <i class="bi bi-plus-circle-fill text-primary" style="font-size: 1.5rem;"></i>
+            </div>
+        `).join('');
+        
+        searchResults.innerHTML = html;
+    }
+    
+    searchResults.classList.add('show');
+});
+
+// Prevent dropdown from closing when clicking inside it
+searchResults.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+});
+
+searchInput.addEventListener('blur', function() {
+    setTimeout(() => {
+        searchResults.classList.remove('show');
+    }, 250);
+});
+
+searchInput.addEventListener('focus', function() {
+    if (this.value.trim().length >= 1) {
+        this.dispatchEvent(new Event('input'));
+    }
+});
+
+function selectProduct(id) {
+    const product = productsData.find(p => p.id === id);
+    if (!product || selectedProducts.find(p => p.id === id)) return;
+    
+    selectedProducts.push(product);
+    searchInput.value = '';
+    searchResults.classList.remove('show');
+    renderProducts();
+    updateTotal();
+    
+    // Focus back on search for quick multi-select
+    searchInput.focus();
+}
+
+function removeProduct(id) {
+    selectedProducts = selectedProducts.filter(p => p.id !== id);
+    renderProducts();
+    updateTotal();
+}
+
+function renderProducts() {
+    const container = document.getElementById('selectedProducts');
+    if (selectedProducts.length === 0) {
+        container.innerHTML = '<p class="text-muted small mb-0">Search & select products above</p>';
+        return;
+    }
+    
+    container.innerHTML = selectedProducts.map(p => `
+        <div class="product-card selected">
+            <div class="d-flex align-items-center gap-2">
+                ${p.image_path ? 
+                    `<img src="/static/${p.image_path}" class="product-img" alt="">` : 
+                    `<div class="product-placeholder"><i class="bi bi-image text-muted"></i></div>`
+                }
+                <div class="flex-grow-1">
+                    <span class="badge bg-secondary">${p.product_code}</span>
+                    <div class="small">${p.name}</div>
+                    <span class="text-primary fw-bold">₹${p.rental_price.toLocaleString('en-IN')}</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeProduct(${p.id})">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <input type="hidden" name="product_id[]" value="${p.id}">
+        </div>
+    `).join('');
+}
+
+function updateTotal() {
+    let total = selectedProducts.reduce((sum, p) => sum + p.rental_price, 0);
+    
+    document.querySelectorAll('.extra-amount').forEach(input => {
+        total += parseFloat(input.value) || 0;
+    });
+    
+    document.getElementById('totalAmount').textContent = '₹' + total.toLocaleString('en-IN');
+    
+    const summary = document.getElementById('summaryProducts');
+    if (selectedProducts.length > 0) {
+        summary.innerHTML = selectedProducts.map(p => 
+            `<div class="d-flex justify-content-between"><span>${p.product_code}</span><span>₹${p.rental_price.toLocaleString('en-IN')}</span></div>`
+        ).join('');
+    } else {
+        summary.textContent = 'No products';
+    }
+}
+
+function addAccessory() {
+    const container = document.getElementById('accessoriesContainer');
+    if (container.querySelector('p')) container.innerHTML = '';
+    
+    const row = document.createElement('div');
+    row.className = 'accessory-row d-flex gap-2 py-2 border-bottom';
+    row.innerHTML = `
+        <input type="text" name="accessory_name[]" class="form-control" placeholder="Accessory name">
+        <input type="text" name="accessory_remarks[]" class="form-control" placeholder="Remarks">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.accessory-row').remove()">
+            <i class="bi bi-x"></i>
+        </button>
+    `;
+    container.appendChild(row);
+}
+
+function addExtraCharge() {
+    const container = document.getElementById('extraChargesContainer');
+    if (container.querySelector('p')) container.innerHTML = '';
+    
+    const row = document.createElement('div');
+    row.className = 'extra-row d-flex gap-2 py-2 border-bottom flex-wrap';
+    row.innerHTML = `
+        <input type="text" name="extra_description[]" class="form-control" style="flex:2;min-width:120px;" placeholder="Description">
+        <input type="number" name="extra_amount[]" class="form-control extra-amount" style="flex:1;min-width:80px;" placeholder="₹" min="0" onchange="updateTotal()">
+        <input type="text" name="extra_remarks[]" class="form-control" style="flex:1;min-width:80px;" placeholder="Remarks">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeExtra(this)">
+            <i class="bi bi-x"></i>
+        </button>
+    `;
+    container.appendChild(row);
+}
+
+function removeExtra(btn) {
+    btn.closest('.extra-row').remove();
+    updateTotal();
+}
+
+// Form validation
+document.getElementById('orderForm').addEventListener('submit', function(e) {
+    if (selectedProducts.length === 0) {
+        e.preventDefault();
+        alert('Please select at least one product!');
+        return;
+    }
+    
+    const delivery = document.getElementById('deliveryDate').value;
+    const returnDate = document.getElementById('returnDate').value;
+    
+    if (!delivery || !returnDate) {
+        e.preventDefault();
+        alert('Please select dates!');
+        return;
+    }
+    
+    if (new Date(returnDate) < new Date(delivery)) {
+        e.preventDefault();
+        alert('Return date must be after delivery!');
+    }
+});
+</script>
+{% endblock %}
