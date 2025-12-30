@@ -1,0 +1,434 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Products to Order - NERAA Rental{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-card {
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .product-card.selected {
+        border-color: #6366f1;
+        background: #f0f0ff;
+    }
+    
+    .product-image {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        flex-shrink: 0;
+    }
+    
+    .product-placeholder {
+        width: 60px;
+        height: 60px;
+        background: #e2e8f0;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    /* IMPORTANT: Override card overflow to allow dropdown to show */
+    .products-card {
+        overflow: visible !important;
+    }
+    
+    .products-card .card-body {
+        overflow: visible !important;
+    }
+    
+    .search-wrapper {
+        position: relative;
+        z-index: 1050;
+    }
+    
+    .search-input-wrapper {
+        position: relative;
+    }
+    
+    .search-input-wrapper .search-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 18px;
+    }
+    
+    .search-input-wrapper input {
+        padding-left: 45px;
+        height: 50px;
+        font-size: 15px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        transition: all 0.3s;
+    }
+    
+    .search-input-wrapper input:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+    
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #6366f1;
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        max-height: 350px;
+        overflow-y: auto;
+        z-index: 9999;
+        display: none;
+        margin-top: 5px;
+    }
+    
+    .search-results.show {
+        display: block;
+    }
+    
+    .search-result-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.2s;
+    }
+    
+    .search-result-item:hover {
+        background: #f0f0ff;
+    }
+    
+    .search-result-item:last-child {
+        border-bottom: none;
+    }
+    
+    .search-result-item img {
+        width: 45px;
+        height: 45px;
+        object-fit: cover;
+        border-radius: 8px;
+        flex-shrink: 0;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .search-result-item .product-placeholder {
+        width: 45px;
+        height: 45px;
+        min-width: 45px;
+    }
+    
+    .search-count {
+        background: #6366f1;
+        color: white;
+        padding: 10px 15px;
+        font-size: 13px;
+        font-weight: 500;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .product-card {
+            padding: 12px;
+        }
+        
+        .product-image,
+        .product-placeholder {
+            width: 50px;
+            height: 50px;
+        }
+        
+        .product-card h6 {
+            font-size: 14px;
+        }
+        
+        .product-card .badge {
+            font-size: 11px;
+        }
+        
+        .search-results {
+            max-height: 300px;
+        }
+        
+        .search-result-item {
+            padding: 10px 12px;
+        }
+        
+        .search-result-item img,
+        .search-result-item .product-placeholder {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+        }
+        
+        .search-input-wrapper input {
+            height: 46px;
+            font-size: 14px;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .product-image,
+        .product-placeholder {
+            width: 45px;
+            height: 45px;
+        }
+        
+        .product-card h6 {
+            font-size: 13px;
+        }
+        
+        .btn-outline-danger {
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Add Products to Order #{{ order.id }}</h4>
+        <a href="{{ url_for('staff_view_orders') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+    
+    <!-- Order Info -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Customer:</strong> {{ order.customer.name }}</p>
+                    <p class="mb-1"><strong>Phone:</strong> {{ order.customer.phone }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Delivery:</strong> {{ order.delivery_date.strftime('%d-%m-%Y') }}</p>
+                    <p class="mb-1"><strong>Return:</strong> {{ order.return_date.strftime('%d-%m-%Y') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Current Products -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Current Products</h5>
+        </div>
+        <div class="card-body">
+            {% for item in order.items %}
+            <div class="product-card">
+                <div class="d-flex align-items-center gap-3">
+                    {% if item.product.image_path %}
+                    <img src="{{ url_for('static', filename=item.product.image_path) }}" class="product-image" alt="{{ item.product.name }}">
+                    {% else %}
+                    <div class="product-placeholder"><i class="bi bi-image text-muted"></i></div>
+                    {% endif %}
+                    <div class="flex-grow-1">
+                        <span class="badge bg-secondary mb-1">{{ item.product.product_code }}</span>
+                        <h6 class="mb-0">{{ item.product.name }}</h6>
+                        <span class="text-primary fw-bold">₹{{ "%.0f"|format(item.price) }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="alert alert-info mb-0 mt-3">
+                <strong>Current Total:</strong> ₹{{ "%.0f"|format(order.total_amount) }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add New Products -->
+    <form method="POST">
+        <div class="card mb-4 products-card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Add New Products</h5>
+            </div>
+            <div class="card-body">
+                <!-- Product Search -->
+                <div class="search-wrapper mb-3">
+                    <div class="search-input-wrapper">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" id="productSearch" class="form-control" 
+                               placeholder="Search by Product Code or Name..." autocomplete="off">
+                    </div>
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+                
+                <!-- Selected Products -->
+                <div id="selectedProducts">
+                    <p class="text-muted">Search and select products to add to this order.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex gap-2 mb-4">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-check-circle me-1"></i>Add Products
+            </button>
+            <a href="{{ url_for('staff_view_orders') }}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Parse products data safely
+let productsData = [];
+try {
+    productsData = JSON.parse('{{ products|tojson|safe }}');
+    console.log('Total products loaded:', productsData.length);
+} catch(e) {
+    console.error('Error loading products:', e);
+}
+
+const existingProductIds = JSON.parse('{{ order.items|map(attribute="product_id")|list|tojson|safe }}');
+let selectedProducts = [];
+
+// Product Search
+const searchInput = document.getElementById('productSearch');
+const searchResults = document.getElementById('searchResults');
+
+searchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    
+    if (query.length < 1) {
+        searchResults.classList.remove('show');
+        return;
+    }
+    
+    // Filter products
+    const matches = productsData.filter(p => {
+        const codeMatch = p.product_code.toLowerCase().includes(query);
+        const nameMatch = p.name.toLowerCase().includes(query);
+        const notInOrder = !existingProductIds.includes(p.id);
+        const notSelected = !selectedProducts.find(sp => sp.id === p.id);
+        return (codeMatch || nameMatch) && notInOrder && notSelected;
+    });
+    
+    console.log('Search:', query, '| Found:', matches.length);
+    
+    if (matches.length === 0) {
+        searchResults.innerHTML = `
+            <div class="search-count bg-secondary">No products found</div>
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-search" style="font-size: 2rem;"></i>
+                <p class="mt-2 mb-0">No available products match "${query}"</p>
+            </div>
+        `;
+    } else {
+        let html = `<div class="search-count">
+            <i class="bi bi-box-seam me-2"></i>${matches.length} product(s) found - Click to select
+        </div>`;
+        
+        html += matches.map(p => `
+            <div class="search-result-item" onclick="selectProduct(${p.id})">
+                ${p.image_path ? 
+                    `<img src="/static/${p.image_path}" alt="${p.name}">` : 
+                    `<div class="product-placeholder"><i class="bi bi-image text-muted"></i></div>`
+                }
+                <div class="flex-grow-1">
+                    <div><strong class="text-primary">${p.product_code}</strong> - ${p.name}</div>
+                    <div class="text-success fw-bold">₹${p.rental_price.toLocaleString('en-IN')}</div>
+                </div>
+                <i class="bi bi-plus-circle-fill text-primary" style="font-size: 1.5rem;"></i>
+            </div>
+        `).join('');
+        
+        searchResults.innerHTML = html;
+    }
+    
+    searchResults.classList.add('show');
+});
+
+// Prevent dropdown from closing when clicking inside it
+searchResults.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+});
+
+searchInput.addEventListener('blur', function() {
+    setTimeout(() => {
+        searchResults.classList.remove('show');
+    }, 250);
+});
+
+searchInput.addEventListener('focus', function() {
+    if (this.value.trim().length >= 1) {
+        this.dispatchEvent(new Event('input'));
+    }
+});
+
+function selectProduct(productId) {
+    const product = productsData.find(p => p.id === productId);
+    if (!product) return;
+    
+    if (existingProductIds.includes(productId)) {
+        alert('Product already in order!');
+        return;
+    }
+    
+    if (selectedProducts.find(p => p.id === productId)) {
+        alert('Product already selected!');
+        return;
+    }
+    
+    selectedProducts.push(product);
+    searchInput.value = '';
+    searchResults.classList.remove('show');
+    renderSelectedProducts();
+    
+    // Focus back on search for quick multi-select
+    searchInput.focus();
+}
+
+function removeSelectedProduct(productId) {
+    selectedProducts = selectedProducts.filter(p => p.id !== productId);
+    renderSelectedProducts();
+}
+
+function renderSelectedProducts() {
+    const container = document.getElementById('selectedProducts');
+    
+    if (selectedProducts.length === 0) {
+        container.innerHTML = '<p class="text-muted">Search and select products to add to this order.</p>';
+        return;
+    }
+    
+    container.innerHTML = selectedProducts.map(p => `
+        <div class="product-card selected">
+            <div class="d-flex align-items-center gap-3">
+                ${p.image_path ? 
+                    `<img src="/static/${p.image_path}" class="product-image" alt="${p.name}">` : 
+                    `<div class="product-placeholder"><i class="bi bi-image text-muted"></i></div>`
+                }
+                <div class="flex-grow-1">
+                    <span class="badge bg-secondary mb-1">${p.product_code}</span>
+                    <h6 class="mb-0">${p.name}</h6>
+                    <span class="text-primary fw-bold">₹${p.rental_price.toLocaleString('en-IN')}</span>
+                </div>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeSelectedProduct(${p.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+            <input type="hidden" name="product_id[]" value="${p.id}">
+        </div>
+    `).join('');
+}
+</script>
+{% endblock %}
